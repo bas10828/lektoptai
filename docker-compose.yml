@@ -1,0 +1,13 @@
+services:
+  vigi-control:
+    build: .
+    container_name: vigi-control
+    # host networking: cameras live on 192.168.101.x, reached through the
+    # host's existing WireGuard tunnel — sharing the host's network
+    # namespace/routing table avoids Docker's NAT/bridge getting in the way
+    # of VPN-routed traffic. Linux-only, fine for this Ubuntu target.
+    network_mode: host
+    env_file: .env
+    volumes:
+      - .:/app
+    restart: unless-stopped
