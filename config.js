@@ -23,7 +23,7 @@ const noParking = {
   camPort, camUser, camPass, rtspPort,
   rtspPath: 'stream1',
   speakerVolume: 100,
-  warningFilesVehicle: ['1_th', '2_en', '3_zh', '4_ja', '5_ko'].map((f) =>
+  warningFilesVehicle: ['1_th', '2_en'].map((f) =>
     path.join(__dirname, 'warnings-vehicle', `${f}.alaw`)),
   sirenMs: 2500,
   maxLoopMsToggle: 30 * 60 * 1000,
