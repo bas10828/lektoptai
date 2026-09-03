@@ -11,8 +11,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # wheel, which is both dead weight and ~2GB heavier on this GPU-less host.
 # --break-system-packages: Debian's system pip refuses global installs
 # (PEP 668) otherwise; fine here since the container has no other Python use.
+# --extra-index-url (not --index-url): --index-url restricts ALL packages,
+# including transitive deps like typing-extensions, to the PyTorch index
+# only — that index has no source-build tooling (flit_core), so a
+# typing-extensions version with no prebuilt wheel there fails outright.
+# --extra-index-url keeps PyPI as a fallback for everything except torch
+# itself, which still resolves to the CPU wheel from the pytorch index.
 RUN pip3 install --break-system-packages --no-cache-dir \
-      torch --index-url https://download.pytorch.org/whl/cpu \
+      torch --extra-index-url https://download.pytorch.org/whl/cpu \
     && pip3 install --break-system-packages --no-cache-dir ultralytics
 
 # Source is bind-mounted at runtime (see docker-compose.yml), not copied —
