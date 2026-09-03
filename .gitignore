@@ -1,0 +1,11 @@
+.env
+run.log
+run.err.log
+*.log
+no-parking-zone-settings.json
+mode-state.json
+armed-state.json
+node_modules/
+*.pt
+__pycache__/
+.session-secret

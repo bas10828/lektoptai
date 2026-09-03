@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<title>เข้าสู่ระบบ - VIGI Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared.css">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .login-card { width: 100%; max-width: 360px; }
+  .login-title { font-size: 20px; font-weight: 800; color: var(--accent); margin: 0 0 4px; text-align: center; }
+  .login-sub { font-size: 13px; color: var(--muted); margin: 0 0 22px; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="card login-card">
+    <div class="login-title">VIGI Control</div>
+    <div class="login-sub">เข้าสู่ระบบเพื่อดูกล้อง</div>
+    <form id="loginForm">
+      <div class="field">
+        <label for="username">ชื่อผู้ใช้</label>
+        <input id="username" name="username" type="text" autocomplete="username" required autofocus />
+      </div>
+      <div class="field">
+        <label for="password">รหัสผ่าน</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required />
+      </div>
+      <button type="submit" class="btn-block" id="submitBtn">เข้าสู่ระบบ</button>
+      <div class="error-text" id="errorText"></div>
+    </form>
+  </div>
+
+<script>
+  const form = document.getElementById('loginForm');
+  const submitBtn = document.getElementById('submitBtn');
+  const errorText = document.getElementById('errorText');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'กำลังตรวจสอบ...';
+    errorText.textContent = '';
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        window.location.href = '/';
+      } else {
+        errorText.textContent = data.error || 'เข้าสู่ระบบไม่สำเร็จ';
+      }
+    } catch (e) {
+      errorText.textContent = 'เชื่อมต่อไม่ได้ ลองใหม่';
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'เข้าสู่ระบบ';
+    }
+  });
+</script>
+</body>
+</html>

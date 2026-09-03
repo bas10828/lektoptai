@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<title>เฝ้าระวังการบุกรุก - หลังบ้าน</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared.css">
+<style>
+  /* The video stays pinned in place (position: sticky) while everything
+     below it scrolls underneath — simpler and far more robust than trying
+     to detect scroll position and pop it into a floating corner player.
+     `top` is set from JS to the header's actual measured height (differs
+     between the 2-row mobile header and the 1-row desktop one) so the
+     video docks directly under it with no gap or overlap. */
+  .stage-wrap {
+    position: sticky; z-index: 20;
+    width: 100%; margin-bottom: var(--sp-5);
+    padding-top: var(--sp-2); background: var(--bg);
+  }
+  .stage {
+    position: relative; width: 100%; max-height: 42vh; aspect-ratio: 16 / 9;
+    margin: 0 auto;
+    background: #000; border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--card-border); box-shadow: var(--shadow-card);
+  }
+  #video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  .stage-label {
+    position: absolute; top: 10px; left: 10px; z-index: 4;
+    padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--fg);
+    background: rgba(6, 7, 12, 0.7); border-radius: var(--radius-pill);
+    backdrop-filter: blur(6px);
+  }
+  .stage-loading {
+    position: absolute; inset: 0; z-index: 5;
+    display: none; align-items: center; justify-content: center;
+    background: rgba(5,7,13,0.75); color: var(--accent); font-size: 15px; font-weight: 600;
+    pointer-events: none;
+  }
+  .offline-badge {
+    display: none; position: absolute; top: 10px; right: 10px; z-index: 6;
+    padding: 6px 14px; font-size: 13px; font-weight: 700; color: #fff;
+    background: var(--bad); border-radius: var(--radius-pill);
+    box-shadow: 0 6px 18px rgba(255,95,109,0.5);
+  }
+  .offline-badge.show { display: block; }
+  .cam-offline { font-size: 12px; color: var(--bad); font-weight: 600; }
+  .stage-loading.show { display: flex; }
+
+  .layout { display: flex; gap: var(--sp-4); align-items: flex-start; flex-wrap: wrap; }
+  .cams {
+    flex: 1 1 100%;
+    display: grid; grid-template-columns: 1fr; gap: var(--sp-3);
+  }
+  .cam-card {
+    padding: var(--sp-4); border-radius: var(--radius-md);
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-card);
+    cursor: pointer; transition: border-color 0.15s ease, transform 0.1s ease;
+  }
+  .cam-card:active { transform: scale(0.99); }
+  .cam-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset, var(--shadow-card); }
+  .cam-card.alert { border-color: var(--bad); box-shadow: 0 0 24px rgba(255,95,109,0.45); }
+  .cam-top { display: flex; align-items: center; gap: 8px; }
+  .cam-name { font-size: 16px; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cam-ip { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .cam-row { margin-top: var(--sp-2); display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted-2); }
+  .cam-actions { margin-top: var(--sp-3); display: flex; gap: 8px; flex-wrap: wrap; }
+  .cam-actions button { flex: 1 1 auto; padding: 13px 10px; font-size: 14px; }
+
+  .log-panel { margin-top: var(--sp-4); border-radius: 14px; background: var(--card-bg); border: 1px solid var(--card-border); overflow: hidden; }
+  .log-panel summary { padding: 12px 14px; font-size: 14px; color: var(--accent); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .log-body { padding: 4px 14px 10px; font-size: 12px; max-height: 220px; overflow-y: auto; }
+  .log-row { padding: 6px 0; color: var(--muted-2); border-bottom: 1px solid rgba(127,178,255,0.08); font-family: "Consolas", monospace; word-break: break-all; }
+
+  @media (min-width: 640px) {
+    .cams { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<header class="app-header">
+  <span class="app-title">VIGI Control</span>
+  <nav class="tab-bar">
+    <a href="/no-parking">🚗 หน้าบ้าน</a>
+    <a href="/intrusion" class="active">🚨 หลังบ้าน</a>
+  </nav>
+  <div class="mode-controls" id="modeControls">
+    <button class="mode-btn" data-mode="away" onclick="setMode('away')" title="ไม่อยู่บ้าน — หลังบ้านเปิดเต็มระบบตลอด">🚪 ไม่อยู่บ้าน</button>
+    <button class="mode-btn" data-mode="home" onclick="setMode('home')" title="อยู่บ้าน — หลังบ้านเปิดเฉพาะดึก (19:00-06:00)">🏠 อยู่บ้าน</button>
+    <button class="mode-btn" data-mode="custom" onclick="setMode('custom')" title="กำหนดเอง — คุมเปิด/ปิดแต่ละกล้องเอง">⚙️ กำหนดเอง</button>
+  </div>
+  <div class="master-controls">
+    <button class="icon-btn" title="เปิดใช้งานทั้งหมด" onclick="masterSetArmed(true)">🟢</button>
+    <button class="icon-btn" title="ปิดใช้งานทั้งหมด" onclick="masterSetArmed(false)">🔴</button>
+  </div>
+  <a class="logout-link" href="#" onclick="logout()">ออกจากระบบ</a>
+</header>
+
+<div class="page">
+  <div class="stage-wrap" id="stageWrap">
+    <div class="stage" id="stage">
+      <div class="stage-label" id="stageLabel">-</div>
+      <div class="stage-loading" id="stageLoading">🔄 กำลังเปลี่ยนกล้อง...</div>
+      <div class="offline-badge" id="offlineBadge">🔴 กล้องขาดการเชื่อมต่อ</div>
+      <img id="video" src="/intrusion/stream.mjpg" alt="camera feed" />
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="cams" id="camList"></div>
+  </div>
+
+  <details class="log-panel" id="logPanel">
+    <summary>📋 Event log ละเอียด (สำหรับดีบัก)</summary>
+    <div class="log-body"><div id="logList">-</div></div>
+  </details>
+</div>
+
+<script>
+  const camListEl = document.getElementById('camList');
+  const stageWrapEl = document.getElementById('stageWrap');
+  const stageLabelEl = document.getElementById('stageLabel');
+  const stageLoadingEl = document.getElementById('stageLoading');
+  const offlineBadgeEl = document.getElementById('offlineBadge');
+  const logListEl = document.getElementById('logList');
+  const videoEl = document.getElementById('video');
+
+  function logout() {
+    fetch('/logout', { method: 'POST' }).then(() => { window.location.href = '/login'; });
+  }
+
+  // Dock the sticky video directly under the header — its height differs
+  // between the 2-row mobile layout and the 1-row desktop one, so measure
+  // it instead of hardcoding a breakpoint-specific number.
+  function pinStageUnderHeader() {
+    const header = document.querySelector('.app-header');
+    stageWrapEl.style.top = header.offsetHeight + 'px';
+  }
+  pinStageUnderHeader();
+  window.addEventListener('resize', pinStageUnderHeader);
+
+  let selectedCamId = null;
+  let lastData = null;
+  let loadingTimer = null;
+
+  function render(data) {
+    lastData = data;
+    if (!selectedCamId) selectedCamId = data.selectedCamId;
+    stageLabelEl.textContent = (data.cams.find((c) => c.id === data.selectedCamId) || {}).label || '-';
+    offlineBadgeEl.classList.toggle('show', !!data.videoOffline);
+
+    camListEl.innerHTML = data.cams.map((c) => `
+      <div class="cam-card ${c.id === data.selectedCamId ? 'selected' : ''} ${c.running ? 'alert' : ''}" data-id="${c.id}">
+        <div class="cam-top">
+          <span class="dot ${!c.connected ? 'dot-bad' : c.armed ? 'dot-good' : 'dot-muted'}"></span>
+          <span class="cam-name">${c.label}</span>
+          <span class="cam-ip">${c.camIp}</span>
+        </div>
+        <div class="cam-row">
+          <span>${c.connected ? `แจ้งเตือนแล้ว ${c.alertCount} ครั้ง` : '<span class="cam-offline">🔴 ขาดการเชื่อมต่อ</span>'}</span>
+          <span>${c.lastAlertAt ? new Date(c.lastAlertAt).toLocaleTimeString('th-TH') : '-'}</span>
+        </div>
+        <div class="cam-actions">
+          <button class="armed-btn ${c.armed ? '' : 'btn-off'}" data-id="${c.id}">${c.armed ? '🟢 ระบบเปิดอยู่ (กดเพื่อปิด)' : '🔴 ระบบปิดอยู่ (กดเพื่อเปิด)'}</button>
+          <button class="test-btn" data-id="${c.id}">🔊 ทดสอบ</button>
+          ${c.running ? `<button class="stop-btn btn-danger" data-id="${c.id}">⏹ หยุด</button>` : ''}
+        </div>
+      </div>
+    `).join('');
+
+    camListEl.querySelectorAll('.cam-card').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        selectCam(el.dataset.id);
+      });
+    });
+    camListEl.querySelectorAll('.armed-btn').forEach((el) => {
+      el.addEventListener('click', () => toggleArmed(el.dataset.id));
+    });
+    camListEl.querySelectorAll('.test-btn').forEach((el) => {
+      el.addEventListener('click', () => testAlarm(el.dataset.id));
+    });
+    camListEl.querySelectorAll('.stop-btn').forEach((el) => {
+      el.addEventListener('click', () => stopAlarm(el.dataset.id));
+    });
+  }
+
+  function selectCam(camId) {
+    if (camId === selectedCamId) return;
+    selectedCamId = camId;
+    logListEl.innerHTML = '-';
+
+    // The video is a single long-lived MJPEG connection whose upstream
+    // camera the server swaps out — the <img> never fires load/error
+    // during a healthy switch, so the old frame just sits there frozen for
+    // the second or two ffmpeg needs to reconnect to the new camera. Give
+    // instant feedback instead of leaving the tap looking like it did
+    // nothing: update the highlighted card immediately (don't wait for the
+    // SSE round-trip) and cover the stale frame with a loading label.
+    if (lastData) render({ ...lastData, selectedCamId: camId });
+    stageLoadingEl.classList.add('show');
+    clearTimeout(loadingTimer);
+    loadingTimer = setTimeout(() => stageLoadingEl.classList.remove('show'), 3000);
+
+    fetch('/intrusion/select', { method: 'POST', body: JSON.stringify({ camId }) });
+  }
+
+  function toggleArmed(camId) {
+    fetch('/intrusion/toggle-armed', { method: 'POST', body: JSON.stringify({ camId }) });
+  }
+
+  function masterSetArmed(armed) {
+    const action = armed ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+    if (!confirm(`ยืนยัน${action}ทั้งหมด (หน้าบ้าน + หลังบ้าน)?`)) return;
+    fetch('/no-parking/set-armed', { method: 'POST', body: JSON.stringify({ armed }) });
+    fetch('/intrusion/set-all-armed', { method: 'POST', body: JSON.stringify({ armed }) });
+  }
+
+  const modeLabels = { away: 'ไม่อยู่บ้าน (หลังบ้านเต็มระบบตลอด)', home: 'อยู่บ้าน (หลังบ้านเปิดเฉพาะดึก)', custom: 'กำหนดเอง (คุมทีละกล้อง)' };
+  function setMode(m) {
+    if (!confirm(`เปลี่ยนโหมดเป็น "${modeLabels[m]}"?`)) return;
+    fetch('/mode/set', { method: 'POST', body: JSON.stringify({ mode: m }) }).then(refreshMode);
+  }
+  function refreshMode() {
+    fetch('/mode/status', { cache: 'no-store' }).then((r) => r.json()).then((d) => {
+      document.querySelectorAll('.mode-btn').forEach((b) => b.classList.toggle('active', b.dataset.mode === d.mode));
+    });
+  }
+  refreshMode();
+
+  function testAlarm(camId) {
+    fetch('/intrusion/test-alarm', { method: 'POST', body: JSON.stringify({ camId }) });
+  }
+
+  function stopAlarm(camId) {
+    fetch('/intrusion/stop-alarm', { method: 'POST', body: JSON.stringify({ camId }) });
+  }
+
+  // Plain polling, not EventSource/SSE — a Cloudflare tunnel buffers
+  // text/event-stream responses (compresses at the edge, which needs to
+  // accumulate bytes first) so the dashboard behind one never rendered
+  // anything, even though a normal fetch response comes through instantly.
+  // Confirmed empirically: MJPEG video streams fine through the same
+  // tunnel, only SSE was stuck. Matches how the /no-parking page already
+  // does its live updates.
+  function connectState() {
+    setInterval(async () => {
+      try {
+        const res = await fetch('/intrusion/state', { cache: 'no-store' });
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        render(await res.json());
+      } catch (e) { /* transient network hiccup, next poll retries */ }
+    }, 1500);
+  }
+
+  function connectRaw() {
+    const es = new EventSource('/intrusion/raw-events');
+    es.onmessage = (e) => {
+      const entry = JSON.parse(e.data);
+      const obj = entry.raw || {};
+      const evtType = obj.event_type || (obj.Heartbeat !== undefined ? 'heartbeat' : 'unknown');
+      const time = new Date(entry.ts).toLocaleTimeString('th-TH', { hour12: false });
+      const row = `<div class="log-row">[${time}] ${evtType} ${JSON.stringify(obj)}</div>`;
+      logListEl.insertAdjacentHTML('afterbegin', row);
+      while (logListEl.children.length > 100) logListEl.removeChild(logListEl.lastChild);
+    };
+  }
+
+  let retryDelay = 2000;
+  videoEl.addEventListener('load', () => { retryDelay = 2000; });
+  videoEl.addEventListener('error', () => {
+    setTimeout(() => { videoEl.src = '/intrusion/stream.mjpg?_=' + Date.now(); }, retryDelay);
+    retryDelay = Math.min(retryDelay * 1.5, 15000);
+  });
+
+  connectState();
+  connectRaw();
+</script>
+</body>
+</html>

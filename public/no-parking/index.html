@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<title>YOLO ตรวจจับรถจอด - หน้าบ้าน</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/shared.css">
+<style>
+  .stage { position: relative; width: 100%; background: #000; border-radius: 16px; overflow: hidden; border: 1px solid var(--card-border); box-shadow: var(--shadow-card); user-select: none; margin-bottom: var(--sp-5); }
+  #video { display: block; width: 100%; height: auto; }
+  .offline-badge {
+    display: none; position: absolute; top: 10px; left: 10px; z-index: 6;
+    padding: 6px 14px; font-size: 13px; font-weight: 700; color: #fff;
+    background: var(--bad); border-radius: var(--radius-pill);
+    box-shadow: 0 6px 18px rgba(255,95,109,0.5);
+  }
+  .offline-badge.show { display: block; }
+  svg#overlay { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+  .zoneRect { fill: rgba(47,216,137,0.12); stroke: var(--good); stroke-width: 2; stroke-dasharray: 6 4; }
+  .zoneHandle { fill: var(--good); stroke: #05070d; stroke-width: 2; cursor: grab; r: 14; }
+  .detBox { fill: none; stroke: #ffb27a; stroke-width: 2; }
+  .detBox.hit { stroke: var(--bad); stroke-width: 3; }
+  .detLabel { fill: #ffb27a; font-size: 13px; font-family: "Kanit", sans-serif; }
+  .detLabel.hit { fill: var(--bad); }
+  .panel { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin-bottom: var(--sp-5); }
+  .panel button { flex: 1 1 auto; }
+  #status { width: 100%; text-align: center; font-size: 13px; color: var(--muted); }
+  .readout { padding: var(--sp-4) var(--sp-5); border-radius: var(--radius-md); background: var(--card-bg); border: 1px solid var(--card-border); box-shadow: var(--shadow-card); font-size: 14px; color: var(--muted-2); display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: var(--sp-5); }
+  .readout b { color: var(--fg); font-size: 18px; }
+  .readout .alert b { color: var(--bad); }
+  .banner { padding: 14px 20px; border-radius: var(--radius-md); background: var(--bad); color: #fff; font-weight: 800; text-align: center; display: none; animation: blink 0.9s ease-in-out infinite; margin-bottom: var(--sp-5); box-shadow: 0 8px 24px rgba(255,95,109,0.4); }
+  .banner.show { display: block; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  .log-panel { padding: var(--sp-4) var(--sp-5); border-radius: var(--radius-md); background: var(--card-bg); border: 1px solid var(--card-border); box-shadow: var(--shadow-card); font-size: 13px; max-height: 200px; overflow-y: auto; }
+  .log-row { display: flex; justify-content: space-between; padding: 3px 0; color: var(--muted-2); border-bottom: 1px solid rgba(127,178,255,0.08); }
+</style>
+</head>
+<body>
+<header class="app-header">
+  <span class="app-title">VIGI Control</span>
+  <nav class="tab-bar">
+    <a href="/no-parking" class="active">🚗 หน้าบ้าน</a>
+    <a href="/intrusion">🚨 หลังบ้าน</a>
+  </nav>
+  <div class="mode-controls" id="modeControls">
+    <button class="mode-btn" data-mode="away" onclick="setMode('away')" title="ไม่อยู่บ้าน — หลังบ้านเปิดเต็มระบบตลอด">🚪 ไม่อยู่บ้าน</button>
+    <button class="mode-btn" data-mode="home" onclick="setMode('home')" title="อยู่บ้าน — หลังบ้านเปิดเฉพาะดึก (19:00-06:00)">🏠 อยู่บ้าน</button>
+    <button class="mode-btn" data-mode="custom" onclick="setMode('custom')" title="กำหนดเอง — คุมเปิด/ปิดแต่ละกล้องเอง">⚙️ กำหนดเอง</button>
+  </div>
+  <div class="master-controls">
+    <button class="icon-btn" title="เปิดใช้งานทั้งหมด" onclick="masterSetArmed(true)">🟢</button>
+    <button class="icon-btn" title="ปิดใช้งานทั้งหมด" onclick="masterSetArmed(false)">🔴</button>
+  </div>
+  <a class="logout-link" href="#" onclick="logout()">ออกจากระบบ</a>
+</header>
+
+<div class="page">
+  <p class="hint">ลากมุมกรอบเขียวให้ตรงจุดห้ามจอด — ระบบตรวจรถ (car/truck/bus) ด้วย YOLO ทุกไม่กี่วินาที ถ้า bbox อยู่ตำแหน่งเดิมในโซนติดต่อกันหลายรอบถือว่าจอดนิ่ง ถึงจะเล่นเสียงเตือน</p>
+
+  <div class="stage">
+    <img id="video" src="/no-parking/stream.mjpg" alt="camera feed" />
+    <div class="offline-badge" id="offlineBadge">🔴 กล้องขาดการเชื่อมต่อ</div>
+    <svg id="overlay">
+      <polygon class="zoneRect" id="zoneRect" points=""></polygon>
+      <circle class="zoneHandle" id="zh0"></circle>
+      <circle class="zoneHandle" id="zh1"></circle>
+      <circle class="zoneHandle" id="zh2"></circle>
+      <circle class="zoneHandle" id="zh3"></circle>
+      <g id="detGroup"></g>
+    </svg>
+  </div>
+
+  <div class="banner" id="banner">🚨 รถจอดขวางทางเข้า — กำลังแจ้งเตือน</div>
+
+  <div class="panel">
+    <button id="armedBtn" onclick="toggleArmed()">เปิดใช้งานระบบ</button>
+    <button onclick="saveZone()">บันทึกโซน</button>
+    <button onclick="testAlarm()">🔊 ทดสอบเสียง</button>
+    <span id="status"></span>
+  </div>
+
+  <div class="readout">
+    <div>YOLO worker: <b id="readyVal">-</b></div>
+    <div>รถที่เจอในเฟรม: <b id="detCountVal">-</b></div>
+    <div class="alert">แจ้งเตือนแล้ว: <b id="alertCountVal">0</b> ครั้ง</div>
+  </div>
+
+  <div class="log-panel">
+    <div id="logList">-</div>
+  </div>
+</div>
+
+<script>
+  const video = document.getElementById('video');
+  const stage = document.querySelector('.stage');
+  const overlay = document.getElementById('overlay');
+  const zoneRect = document.getElementById('zoneRect');
+  const zHandles = [0, 1, 2, 3].map((i) => document.getElementById('zh' + i));
+  const detGroup = document.getElementById('detGroup');
+  const statusEl = document.getElementById('status');
+  const armedBtn = document.getElementById('armedBtn');
+  const bannerEl = document.getElementById('banner');
+  const offlineBadgeEl = document.getElementById('offlineBadge');
+
+  function logout() {
+    fetch('/logout', { method: 'POST' }).then(() => { window.location.href = '/login'; });
+  }
+
+  function masterSetArmed(armed) {
+    const action = armed ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+    if (!confirm(`ยืนยัน${action}ทั้งหมด (หน้าบ้าน + หลังบ้าน)?`)) return;
+    fetch('/no-parking/set-armed', { method: 'POST', body: JSON.stringify({ armed }) });
+    fetch('/intrusion/set-all-armed', { method: 'POST', body: JSON.stringify({ armed }) });
+  }
+
+  const modeLabels = { away: 'ไม่อยู่บ้าน (หลังบ้านเต็มระบบตลอด)', home: 'อยู่บ้าน (หลังบ้านเปิดเฉพาะดึก)', custom: 'กำหนดเอง (คุมทีละกล้อง)' };
+  function setMode(m) {
+    if (!confirm(`เปลี่ยนโหมดเป็น "${modeLabels[m]}"?`)) return;
+    fetch('/mode/set', { method: 'POST', body: JSON.stringify({ mode: m }) }).then(refreshMode);
+  }
+  function refreshMode() {
+    fetch('/mode/status', { cache: 'no-store' }).then((r) => r.json()).then((d) => {
+      document.querySelectorAll('.mode-btn').forEach((b) => b.classList.toggle('active', b.dataset.mode === d.mode));
+    });
+  }
+  refreshMode();
+
+  let zonePoints = null;
+  let draggingZoneIdx = null;
+
+  function boundsToPoints(zone) {
+    const [x1, y1, x2, y2] = zone;
+    return [{ x: x1, y: y1 }, { x: x2, y: y1 }, { x: x2, y: y2 }, { x: x1, y: y2 }];
+  }
+  function pointsToBounds(pts) {
+    const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y);
+    return [Math.round(Math.min(...xs)), Math.round(Math.min(...ys)), Math.round(Math.max(...xs)), Math.round(Math.max(...ys))];
+  }
+  let togglingArmed = false;
+
+  function imageDisplayRect() {
+    const rect = video.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    return { left: rect.left - stageRect.left, top: rect.top - stageRect.top, width: rect.width, height: rect.height };
+  }
+  function naturalToDisplay(nx, ny) {
+    const r = imageDisplayRect();
+    return { x: r.left + (nx / video.naturalWidth) * r.width, y: r.top + (ny / video.naturalHeight) * r.height };
+  }
+  function displayToNatural(dx, dy) {
+    const r = imageDisplayRect();
+    return { x: Math.round(((dx - r.left) / r.width) * video.naturalWidth), y: Math.round(((dy - r.top) / r.height) * video.naturalHeight) };
+  }
+
+  function redrawZone() {
+    if (!zonePoints || !video.naturalWidth) { requestAnimationFrame(redrawZone); return; }
+    const disp = zonePoints.map((p) => naturalToDisplay(p.x, p.y));
+    zoneRect.setAttribute('points', disp.map((p) => `${p.x},${p.y}`).join(' '));
+    zHandles.forEach((h, i) => { h.setAttribute('cx', disp[i].x); h.setAttribute('cy', disp[i].y); });
+  }
+  window.addEventListener('resize', redrawZone);
+  video.addEventListener('load', redrawZone);
+
+  zHandles.forEach((h, i) => {
+    h.addEventListener('pointerdown', (e) => { draggingZoneIdx = i; h.setPointerCapture(e.pointerId); e.preventDefault(); });
+  });
+  overlay.addEventListener('pointermove', (e) => {
+    if (draggingZoneIdx === null) return;
+    const rect = stage.getBoundingClientRect();
+    const n = displayToNatural(e.clientX - rect.left, e.clientY - rect.top);
+    zonePoints[draggingZoneIdx] = { x: Math.min(video.naturalWidth, Math.max(0, n.x)), y: Math.min(video.naturalHeight, Math.max(0, n.y)) };
+    redrawZone();
+  });
+  window.addEventListener('pointerup', () => { draggingZoneIdx = null; });
+
+  function saveZone() {
+    if (!zonePoints) return;
+    const zone = pointsToBounds(zonePoints);
+    if (zone[2] - zone[0] < 5 || zone[3] - zone[1] < 5) { statusEl.textContent = 'โซนเล็กเกินไป'; return; }
+    statusEl.textContent = 'กำลังบันทึก...';
+    fetch('/no-parking/set-zone', { method: 'POST', body: JSON.stringify({ zone, zonePoints }) })
+      .then((r) => r.json())
+      .then((d) => { statusEl.textContent = d.ok ? 'บันทึกโซนแล้ว' : 'ผิดพลาด: ' + d.error; })
+      .catch((e) => { statusEl.textContent = 'ผิดพลาด: ' + e.message; });
+  }
+
+  function toggleArmed() {
+    togglingArmed = true;
+    fetch('/no-parking/toggle-armed', { method: 'POST' }).then((r) => r.json()).then((d) => {
+      armedBtn.textContent = d.armed ? '🟢 ระบบเปิดอยู่ (กดเพื่อปิด)' : '🔴 ระบบปิดอยู่ (กดเพื่อเปิด)';
+      armedBtn.classList.toggle('btn-off', !d.armed);
+    }).finally(() => { togglingArmed = false; });
+  }
+
+  function testAlarm() {
+    statusEl.textContent = 'กำลังเล่น...';
+    fetch('/no-parking/test-alarm', { method: 'POST' }).then((r) => r.json()).then(() => { statusEl.textContent = 'เล่นแล้ว'; });
+  }
+
+  function drawDetections(detections, zone) {
+    detGroup.innerHTML = '';
+    if (!video.naturalWidth) return;
+    for (const det of (detections || [])) {
+      const [x1, y1, x2, y2] = det.box;
+      const inZone = zone && x1 < zone[2] && x2 > zone[0] && y1 < zone[3] && y2 > zone[1];
+      const p1 = naturalToDisplay(x1, y1), p2 = naturalToDisplay(x2, y2);
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', p1.x); rect.setAttribute('y', p1.y);
+      rect.setAttribute('width', p2.x - p1.x); rect.setAttribute('height', p2.y - p1.y);
+      rect.setAttribute('class', 'detBox' + (inZone ? ' hit' : ''));
+      detGroup.appendChild(rect);
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', p1.x); label.setAttribute('y', Math.max(12, p1.y - 4));
+      label.setAttribute('class', 'detLabel' + (inZone ? ' hit' : ''));
+      label.textContent = `${det.cls} ${(det.conf * 100).toFixed(0)}%`;
+      detGroup.appendChild(label);
+    }
+  }
+
+  function applyState(d) {
+    document.getElementById('readyVal').textContent = d.ready ? '✅ พร้อม' : '⏳ กำลังโหลดโมเดล...';
+    document.getElementById('detCountVal').textContent = (d.detections || []).length;
+    document.getElementById('alertCountVal').textContent = d.alertCount;
+    bannerEl.classList.toggle('show', !!d.running);
+    offlineBadgeEl.classList.toggle('show', !!d.videoOffline);
+    if (!togglingArmed) {
+      armedBtn.textContent = d.armed ? '🟢 ระบบเปิดอยู่ (กดเพื่อปิด)' : '🔴 ระบบปิดอยู่ (กดเพื่อเปิด)';
+      armedBtn.classList.toggle('btn-off', !d.armed);
+    }
+    if ((d.zonePoints || d.zone) && !zonePoints) {
+      zonePoints = d.zonePoints || boundsToPoints(d.zone);
+      redrawZone();
+    }
+    drawDetections(d.detections, d.zone);
+    document.getElementById('logList').innerHTML = (d.recentAlerts || [])
+      .map((a) => `<div class="log-row"><span>${new Date(a.ts).toLocaleTimeString('th-TH')}</span><span>${a.source === 'manual' ? 'ทดสอบ' : 'กล้อง'}</span></div>`)
+      .join('') || '-';
+  }
+
+  function connect() {
+    setInterval(async () => {
+      try {
+        const res = await fetch('/no-parking/state', { cache: 'no-store' });
+        if (res.status === 401) { window.location.href = '/login'; return; }
+        applyState(await res.json());
+      } catch (e) { /* transient network hiccup, next poll retries */ }
+    }, 1000);
+  }
+  connect();
+</script>
+</body>
+</html>

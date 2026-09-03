@@ -1,0 +1,164 @@
+/* Shared design system for vigi-control — one visual language across the
+   login page, no-parking, and intrusion dashboards. Mobile-first: base
+   rules target phone width, min-width media queries add desktop/tablet
+   refinements on top. */
+
+:root {
+  --bg: #06070c;
+  --bg-2: #0b0f1a;
+  --fg: #eef3fb;
+  --muted: #7a8db3;
+  --muted-2: #b0c2e6;
+  --accent: #6ea8ff;
+  --accent-2: #8b7bff;
+  --accent-dim: rgba(110, 168, 255, 0.45);
+  --good: #2fd889;
+  --bad: #ff5f6d;
+  --card-bg: linear-gradient(180deg, rgba(20, 26, 42, 0.75), rgba(10, 13, 22, 0.75));
+  --card-border: rgba(110, 168, 255, 0.18);
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-pill: 999px;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+  --font: "Kanit", -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(110, 168, 255, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(139, 123, 255, 0.08), transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--fg);
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+
+a { color: var(--accent); }
+
+::selection { background: rgba(110, 168, 255, 0.35); }
+
+/* App chrome: title + 2-tab zone switcher, present on every authenticated
+   page so moving between หน้าบ้าน/หลังบ้าน is one tap, not a trip through a
+   separate landing page.
+   Mobile-first, two rows: the tab switcher (most important, full-width so
+   its two tap targets stay big) on its own line, master controls + logout
+   share a second compact line. Fitting all four items on one row was
+   overflowing on real phone widths — five flex children with padding each
+   easily exceed ~360-390px. Desktop collapses back to one row. */
+.app-header {
+  position: sticky; top: 0; z-index: 30;
+  background: rgba(6, 7, 12, 0.85);
+  backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid var(--card-border);
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+  padding-top: calc(var(--sp-3) + env(safe-area-inset-top, 0px));
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3);
+}
+.app-title { display: none; }
+.tab-bar {
+  order: 1; width: 100%;
+  display: flex; gap: 6px; background: rgba(110, 168, 255, 0.08);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-pill); padding: 4px;
+}
+.tab-bar a {
+  flex: 1; text-align: center; text-decoration: none; color: var(--muted);
+  font-size: 13px; font-weight: 600; padding: 10px 10px; border-radius: var(--radius-pill);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tab-bar a.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #05070d; font-weight: 700;
+  box-shadow: 0 4px 14px rgba(110, 168, 255, 0.35);
+}
+.mode-controls {
+  order: 2; width: 100%;
+  display: flex; gap: 6px; background: rgba(110, 168, 255, 0.08);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-pill); padding: 4px;
+}
+.mode-btn {
+  flex: 1; text-align: center; font-size: 12px; font-weight: 600;
+  padding: 8px 6px; border-radius: var(--radius-pill); color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mode-btn.active {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #05070d; font-weight: 700;
+}
+.master-controls { order: 3; display: flex; gap: 4px; }
+.icon-btn { padding: 7px 10px; font-size: 15px; border-radius: var(--radius-pill); line-height: 1; }
+.logout-link { order: 4; margin-left: auto; align-self: center; font-size: 12px; color: var(--muted); text-decoration: none; white-space: nowrap; }
+
+.page { max-width: 1200px; margin: 0 auto; padding: var(--sp-4); }
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-5);
+}
+
+.hint { color: var(--muted); font-size: 13px; line-height: 1.65; margin: 0 0 var(--sp-4); }
+
+button, .btn {
+  background: rgba(110, 168, 255, 0.12);
+  color: var(--fg);
+  border: 1px solid var(--accent-dim);
+  padding: 12px 18px;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+button:hover, .btn:hover { border-color: var(--good); }
+button:active, .btn:active { transform: scale(0.97); }
+.btn-on { background: rgba(47, 216, 137, 0.16); border-color: var(--good); color: #d7ffe9; }
+.btn-off { background: rgba(255, 95, 109, 0.14); border-color: var(--bad); color: #ffd9dc; }
+.btn-danger { background: rgba(255, 95, 109, 0.22); border-color: var(--bad); font-weight: 700; }
+.btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #05070d; border: none; box-shadow: 0 6px 18px rgba(110, 168, 255, 0.3); }
+.btn-block { width: 100%; }
+
+.field { margin-bottom: var(--sp-4); }
+.field label { display: block; font-size: 13px; color: var(--muted-2); margin-bottom: 6px; font-weight: 600; }
+.field input {
+  width: 100%; background: rgba(110, 168, 255, 0.06); color: var(--fg);
+  border: 1px solid var(--card-border); border-radius: var(--radius-md);
+  padding: 13px 14px; font-size: 16px; font-family: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.field input:focus { outline: none; border-color: var(--accent); background: rgba(110, 168, 255, 0.1); }
+
+.error-text { color: var(--bad); font-size: 13px; margin: 8px 0 0; min-height: 1.2em; }
+
+/* Small live/armed/offline status dot, used wherever a card needs a
+   one-glance state indicator instead of relying on text or border color
+   alone (accessibility + scan-ability at a glance on a monitoring wall). */
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.dot-good { background: var(--good); box-shadow: 0 0 8px var(--good); }
+.dot-bad { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
+.dot-muted { background: var(--muted); }
+
+/* Phones (the default, unqualified rules above) get full-width single
+   columns and big tap targets already. Tablet/desktop gets more breathing
+   room and multi-column layouts where a page opts in via .page-wide. */
+@media (min-width: 720px) {
+  .app-header { padding-left: var(--sp-6); padding-right: var(--sp-6); flex-wrap: nowrap; }
+  .app-title { display: block; order: 0; font-size: 18px; font-weight: 800; letter-spacing: 0.01em; color: var(--fg); white-space: nowrap; }
+  .tab-bar { order: 1; width: auto; flex: 0 1 360px; margin-left: var(--sp-4); }
+  .mode-controls { order: 2; width: auto; flex: 0 1 320px; margin-left: var(--sp-4); }
+  .master-controls { order: 3; margin-left: var(--sp-4); }
+  .page { padding: var(--sp-6); }
+}
