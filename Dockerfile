@@ -17,8 +17,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # typing-extensions version with no prebuilt wheel there fails outright.
 # --extra-index-url keeps PyPI as a fallback for everything except torch
 # itself, which still resolves to the CPU wheel from the pytorch index.
+#
+# torchvision MUST be installed here too, pinned to the matching CPU build
+# (same as torch) — installing it later as ultralytics' own dependency lets
+# pip resolve a torchvision wheel from plain PyPI that doesn't ABI-match a
+# CPU-only torch, which fails at inference time with
+# "NotImplementedError: Could not run 'torchvision::nms' with arguments
+# from the 'CPU' backend". Versions match the working dev-box venv
+# (torch 2.13.0+cpu / torchvision 0.28.0+cpu).
 RUN pip3 install --break-system-packages --no-cache-dir \
-      torch --extra-index-url https://download.pytorch.org/whl/cpu \
+      torch==2.13.0 torchvision==0.28.0 \
+      --extra-index-url https://download.pytorch.org/whl/cpu \
     && pip3 install --break-system-packages --no-cache-dir ultralytics
 
 # Source is bind-mounted at runtime (see docker-compose.yml), not copied —

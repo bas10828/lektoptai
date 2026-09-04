@@ -70,8 +70,16 @@ const nvr = process.env.NVR_IP ? {
   nvrPass: process.env.NVR_PASS || camPass,
 } : null;
 
+// Multiple portal logins: comma-separated lists in .env, paired by index
+// (PORTAL_USERNAME=a,b + PORTAL_PASSWORD=x,y -> a/x and b/y both valid).
+// A single value on each still works exactly as before.
+const portalUsernames = process.env.PORTAL_USERNAME.split(',').map((s) => s.trim());
+const portalPasswords = process.env.PORTAL_PASSWORD.split(',').map((s) => s.trim());
+if (portalUsernames.length !== portalPasswords.length) {
+  throw new Error('PORTAL_USERNAME and PORTAL_PASSWORD must have the same number of comma-separated entries');
+}
+const portalAccounts = portalUsernames.map((username, i) => ({ username, password: portalPasswords[i] }));
+
 module.exports = {
-  webPort, noParking, intrusionCams, nvr,
-  portalUsername: process.env.PORTAL_USERNAME,
-  portalPassword: process.env.PORTAL_PASSWORD,
+  webPort, noParking, intrusionCams, nvr, portalAccounts,
 };

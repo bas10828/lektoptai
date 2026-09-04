@@ -63,7 +63,7 @@ async function handleLogin(req, res) {
   let username = '', password = '';
   try { ({ username = '', password = '' } = JSON.parse(await readBody(req))); } catch (e) { /* fall through to reject below */ }
 
-  if (username === cfg.portalUsername && password === cfg.portalPassword) {
+  if (cfg.portalAccounts.some((a) => a.username === username && a.password === password)) {
     auth.recordSuccess(ip);
     res.writeHead(200, { 'Content-Type': 'application/json', 'Set-Cookie': auth.createSessionCookie() });
     res.end(JSON.stringify({ ok: true }));
