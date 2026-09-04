@@ -70,7 +70,7 @@ a { color: var(--accent); }
 }
 .tab-bar a {
   flex: 1; text-align: center; text-decoration: none; color: var(--muted);
-  font-size: 13px; font-weight: 600; padding: 10px 10px; border-radius: var(--radius-pill);
+  font-size: 15px; font-weight: 700; padding: 14px 10px; border-radius: var(--radius-pill);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -79,24 +79,55 @@ a { color: var(--accent); }
   color: #05070d; font-weight: 700;
   box-shadow: 0 4px 14px rgba(110, 168, 255, 0.35);
 }
+/* หน้าบ้าน/หลังบ้าน color-coded (green vs orange) — user kept clicking the
+   wrong one because both used the same blue-purple active color and only
+   the text differed. */
+.tab-bar a[href="/no-parking"] { color: rgba(47, 216, 137, 0.75); }
+.tab-bar a[href="/no-parking"].active {
+  background: linear-gradient(135deg, var(--good), #1fae6e);
+  box-shadow: 0 4px 14px rgba(47, 216, 137, 0.35);
+}
+.tab-bar a[href="/intrusion"] { color: rgba(255, 178, 122, 0.8); }
+.tab-bar a[href="/intrusion"].active {
+  background: linear-gradient(135deg, #ffb27a, #ff8a5c);
+  box-shadow: 0 4px 14px rgba(255, 138, 92, 0.35);
+}
+/* Big, always-labeled mode buttons — designed for easy reading and tapping
+   (user's father, 60+, is the primary user: no icon-only buttons, no
+   hover-only tooltips, no ellipsis-truncated text, generous tap targets).
+   "เปิดระบบทั้งหมด" used to be a separate small icon button but does exactly
+   what "away" already does (see mode.js: away = both systems fully armed,
+   continuously) — merged away, dropped as a distinct control. Only
+   "ปิดระบบทั้งหมด" (full disarm) has no equivalent mode, so it stays as its
+   own clearly red, fully-labeled button in the same row. */
 .mode-controls {
   order: 2; width: 100%;
-  display: flex; gap: 6px; background: rgba(110, 168, 255, 0.08);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-pill); padding: 4px;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
 }
 .mode-btn {
-  flex: 1; text-align: center; font-size: 12px; font-weight: 600;
-  padding: 8px 6px; border-radius: var(--radius-pill); color: var(--muted);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-align: center; font-size: 14px; font-weight: 700; line-height: 1.3;
+  padding: 14px 8px; min-height: 56px; border-radius: var(--radius-md);
+  color: var(--muted-2); background: rgba(110, 168, 255, 0.08);
+  border: 1px solid var(--card-border);
+  white-space: normal; word-break: keep-all;
+  display: flex; align-items: center; justify-content: center;
 }
 .mode-btn.active {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #05070d; font-weight: 700;
+  color: #05070d; border-color: transparent;
 }
-.master-controls { order: 3; display: flex; gap: 4px; }
-.icon-btn { padding: 7px 10px; font-size: 15px; border-radius: var(--radius-pill); line-height: 1; }
-.logout-link { order: 4; margin-left: auto; align-self: center; font-size: 12px; color: var(--muted); text-decoration: none; white-space: nowrap; }
+.mode-btn.danger { background: rgba(255, 95, 109, 0.14); border-color: var(--bad); color: #ffd9dc; }
+.mode-btn.danger:active { background: rgba(255, 95, 109, 0.26); }
+/* Own button chrome + margin-top, not just a bare small link — on mobile it
+   used to sit as tiny 12px text directly under the "ปิดระบบทั้งหมด" danger
+   button with only the row-gap between them, easy to brush by accident
+   reaching for that button. */
+.logout-link {
+  order: 3; margin-left: auto; margin-top: var(--sp-2); align-self: center;
+  font-size: 13px; font-weight: 600; color: var(--muted-2); text-decoration: none;
+  white-space: nowrap; padding: 8px 14px; border-radius: var(--radius-pill);
+  border: 1px solid var(--card-border); background: rgba(110, 168, 255, 0.06);
+}
 
 .page { max-width: 1200px; margin: 0 auto; padding: var(--sp-4); }
 
@@ -154,11 +185,34 @@ button:active, .btn:active { transform: scale(0.97); }
 /* Phones (the default, unqualified rules above) get full-width single
    columns and big tap targets already. Tablet/desktop gets more breathing
    room and multi-column layouts where a page opts in via .page-wide. */
+/* Desktop used to pack the tab-bar (which zone to view) and mode-controls
+   (system on/off) into ONE row, side by side with only 16px between them —
+   two different-purpose control groups sitting close together, both
+   pill/card-shaped and similar height. User kept aiming for a tab and
+   landing on a mode button instead. Fix: keep them on their own full-width
+   rows (same as mobile) at every screen size, with a visible divider line
+   between rows, so "which page" and "system mode" are in different places
+   on screen, not just different colors. */
+/* Grid, not flex-order + auto-margin: with flex, giving tab-bar a
+   max-width so it could sit centered let it silently share line 1 with
+   title+logout again (auto-margin only pushes within whatever items land
+   on the same line) — logout ended up stranded in the gap between title
+   and the tab pills instead of the far corner. Grid places every piece by
+   named area regardless of size, so this can't happen again. */
 @media (min-width: 720px) {
-  .app-header { padding-left: var(--sp-6); padding-right: var(--sp-6); flex-wrap: nowrap; }
-  .app-title { display: block; order: 0; font-size: 18px; font-weight: 800; letter-spacing: 0.01em; color: var(--fg); white-space: nowrap; }
-  .tab-bar { order: 1; width: auto; flex: 0 1 360px; margin-left: var(--sp-4); }
-  .mode-controls { order: 2; width: auto; flex: 0 1 320px; margin-left: var(--sp-4); }
-  .master-controls { order: 3; margin-left: var(--sp-4); }
+  .app-header {
+    padding-left: var(--sp-6); padding-right: var(--sp-6); row-gap: var(--sp-3);
+    display: grid; grid-template-columns: auto 1fr auto;
+    grid-template-areas: "title tabs logout" "modes modes modes";
+  }
+  .app-title { display: block; grid-area: title; font-size: 18px; font-weight: 800; letter-spacing: 0.01em; color: var(--fg); white-space: nowrap; }
+  .logout-link { grid-area: logout; margin-left: 0; margin-top: 0; }
+  .tab-bar { grid-area: tabs; width: 100%; max-width: 480px; margin: 0 auto; padding: 6px; }
+  .tab-bar a { font-size: 16px; padding: 14px 10px; }
+  .mode-controls {
+    grid-area: modes; width: 100%; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    padding-top: var(--sp-3); border-top: 1px solid var(--card-border);
+  }
+  .mode-btn { min-height: 52px; padding: 10px 14px; font-size: 14px; }
   .page { padding: var(--sp-6); }
 }

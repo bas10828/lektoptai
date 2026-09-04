@@ -88,13 +88,10 @@
     <a href="/intrusion" class="active">🚨 หลังบ้าน</a>
   </nav>
   <div class="mode-controls" id="modeControls">
-    <button class="mode-btn" data-mode="away" onclick="setMode('away')" title="ไม่อยู่บ้าน — หลังบ้านเปิดเต็มระบบตลอด">🚪 ไม่อยู่บ้าน</button>
-    <button class="mode-btn" data-mode="home" onclick="setMode('home')" title="อยู่บ้าน — หลังบ้านเปิดเฉพาะดึก (19:00-06:00)">🏠 อยู่บ้าน</button>
-    <button class="mode-btn" data-mode="custom" onclick="setMode('custom')" title="กำหนดเอง — คุมเปิด/ปิดแต่ละกล้องเอง">⚙️ กำหนดเอง</button>
-  </div>
-  <div class="master-controls">
-    <button class="icon-btn" title="เปิดใช้งานทั้งหมด" onclick="masterSetArmed(true)">🟢</button>
-    <button class="icon-btn" title="ปิดใช้งานทั้งหมด" onclick="masterSetArmed(false)">🔴</button>
+    <button class="mode-btn" data-mode="away" onclick="setMode('away')">🚪 ไม่อยู่บ้าน<br>(เปิดทั้งหมด)</button>
+    <button class="mode-btn" data-mode="home" onclick="setMode('home')">🏠 อยู่บ้าน<br>(เปิดเฉพาะดึก)</button>
+    <button class="mode-btn" data-mode="custom" onclick="setMode('custom')">⚙️ กำหนดเอง<br>(คุมทีละกล้อง)</button>
+    <button class="mode-btn danger" onclick="masterSetArmed(false)">🔴 ปิดระบบทั้งหมด</button>
   </div>
   <a class="logout-link" href="#" onclick="logout()">ออกจากระบบ</a>
 </header>
