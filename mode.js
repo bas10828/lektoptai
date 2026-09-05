@@ -6,14 +6,17 @@ const path = require('path');
 //   home   - front armed; back-house armed only NIGHT_START_HOUR..NIGHT_END_HOUR
 //   custom - hands-off; whatever each camera's own toggle is set to stands
 //
-// Front (no-parking) and back (intrusion) are enforced differently on
-// purpose. Back-house re-asserts on every tick (CHECK_INTERVAL_MS) so "away"
-// stays fully armed and "home" tracks the night-window boundary live. Front
-// is only forced armed once, at the moment the user switches INTO away or
-// home — after that a manual disarm from the /no-parking page sticks until
-// the next mode switch, per "เปิดตลอด เว้นแต่สั่งปิดเอง" (on by default,
-// off only if turned off by hand). If front were re-asserted every tick too,
-// that manual override would silently revert within a minute.
+// Front (no-parking) and back (intrusion) are both sticky the same way: a
+// manual disarm holds until the next real boundary, not re-forced on every
+// tick. Front's only boundary is a mode switch (forced once on entry to
+// away/home). Back-house has one more boundary — "home"'s night-window
+// clock — so it's re-checked every tick (CHECK_INTERVAL_MS) but only
+// re-asserts when the mode actually just changed or the night/day value
+// actually just flipped, never unconditionally. (Back-house used to force
+// its value on literally every tick regardless, which fought a manual
+// disarm from the /intrusion page — it reverted within 60s. Per
+// "เปิดตลอด เว้นแต่สั่งปิดเอง", on by default, off only if turned off by
+// hand — that has to hold for back-house too.)
 //
 // Fixed clock times, not sunset-calculated — tried an astronomical
 // (NOAA-equation) sunset calc first, but a fixed number was preferred: it
@@ -41,13 +44,28 @@ function createModeController({ intrusion, noParking, dataDir }) {
     fs.writeFile(statePath, JSON.stringify({ mode }), () => {});
   }
 
-  // Continuous enforcement — back-house only. Runs every tick so "away"
-  // stays fully armed even if a camera got manually disarmed earlier, and
-  // "home" crosses the night-window boundary on its own without a restart.
+  // Back-house enforcement. Used to re-assert on EVERY tick regardless of
+  // anything else, which fought a manual disarm from the /intrusion page —
+  // it silently reverted within 60s of being turned off by hand ("away"
+  // always forced true, "home" forced true any time isNightNow() was true),
+  // making manual disarm useless overnight and firing constant false
+  // alarms in production. Fixed to only force a value at an actual
+  // boundary — entering away/home, or "home"'s night-window flipping — same
+  // sticky-until-the-next-real-change principle as front-house below,
+  // just with an extra boundary (the night clock) that front doesn't have.
+  let lastMode = null;
+  let lastNight = null;
   function tick() {
-    if (mode === 'away') intrusion.setAllArmed(true, 'mode-away');
-    else if (mode === 'home') intrusion.setAllArmed(isNightNow(), 'mode-home');
+    const night = isNightNow();
+    const modeChanged = mode !== lastMode;
+    if (mode === 'away') {
+      if (modeChanged) intrusion.setAllArmed(true, 'mode-away');
+    } else if (mode === 'home') {
+      if (modeChanged || night !== lastNight) intrusion.setAllArmed(night, 'mode-home');
+    }
     // custom: no-op — per-camera toggles are the user's own call
+    lastMode = mode;
+    lastNight = night;
   }
 
   // Front camera: forced armed once, on entering away/home — NOT
