@@ -154,4 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
   tickClocks();
   document.querySelectorAll('[data-hold]').forEach((btn) => holdToConfirm(btn, masterDisarm));
   refreshMode();
+  // Mode can change elsewhere (another phone, a schedule) — keep a page that
+  // stays open in sync instead of showing the mode it loaded with.
+  setInterval(() => { if (!document.hidden) refreshMode(); }, 5000);
 });

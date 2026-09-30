@@ -161,13 +161,21 @@ server.listen(cfg.webPort, '0.0.0.0', () => {
   noParking.start();
   intrusion.start();
 
+  // Retried until every camera has its NVR name: after a host reboot the
+  // NVR (reached over WireGuard) can be unreachable when this process
+  // starts, and a single failed attempt used to leave the placeholder
+  // labels ("กล้อง 1 (.56)") up until the next restart.
   if (cfg.nvr) {
-    getChannelNamesByIp(cfg.nvr).then((names) => {
-      if (names.has(cfg.noParking.camIp)) cfg.noParking.label = names.get(cfg.noParking.camIp);
-      for (const camCfg of cfg.intrusionCams) {
-        if (names.has(camCfg.camIp)) camCfg.label = names.get(camCfg.camIp);
+    const NVR_RETRY_MS = 5 * 60 * 1000;
+    const allCams = [cfg.noParking, ...cfg.intrusionCams];
+    const named = new Set();
+    const pullNames = () => getChannelNamesByIp(cfg.nvr).then((names) => {
+      for (const camCfg of allCams) {
+        if (names.has(camCfg.camIp)) { camCfg.label = names.get(camCfg.camIp); named.add(camCfg); }
       }
-      console.log(`[nvr] pulled ${names.size} channel name(s) from ${cfg.nvr.nvrIp}`);
+      console.log(`[nvr] pulled ${names.size} channel name(s) from ${cfg.nvr.nvrIp}, ${named.size}/${allCams.length} cameras named`);
+      if (named.size < allCams.length) setTimeout(pullNames, NVR_RETRY_MS);
     });
+    pullNames();
   }
 });

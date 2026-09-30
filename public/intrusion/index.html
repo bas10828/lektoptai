@@ -198,6 +198,9 @@
 
   function render(data) {
     lastData = data;
+    // A hold-to-confirm in progress lives on a button inside #camList;
+    // rebuilding the list mid-hold would destroy it and cancel the hold.
+    if (camListEl.querySelector('.holding')) { updateHero(data); return; }
     if (!selectedCamId) selectedCamId = data.selectedCamId;
     stageLabelEl.textContent = (data.cams.find((c) => c.id === data.selectedCamId) || {}).label || '-';
     offlineBadgeEl.classList.toggle('show', !!data.videoOffline);
@@ -228,7 +231,7 @@
           <button class="switch armed-btn ${c.armed ? 'on' : ''}" role="switch" aria-checked="${c.armed}" data-id="${c.id}"><span>${c.armed ? 'เฝ้าอยู่' : 'ปิดอยู่'}</span><span class="track"></span></button>
           ${c.running
             ? `<button class="stop-btn btn-danger" data-id="${c.id}">หยุดเสียง</button>`
-            : `<button class="settings-btn" data-id="${c.id}" aria-label="ตั้งค่า ${c.label}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>ตั้งค่า</button><button class="test-btn" data-id="${c.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9a4 4 0 0 1 0 6"/></svg>ทดสอบ</button>`}
+            : `<button class="settings-btn" data-id="${c.id}" aria-label="ตั้งค่า ${c.label}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>ตั้งค่า</button><button class="test-btn siren-test" data-id="${c.id}" aria-label="ทดสอบไซเรน ${c.label} กดค้างไว้"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6"/><path d="M4 17h16M10 21h4"/></svg><span>ทดสอบไซเรน</span></button>`}
         </div>
       </div>`; }).join('');
 
@@ -245,7 +248,7 @@
       el.addEventListener('click', () => toggleArmed(el.dataset.id));
     });
     camListEl.querySelectorAll('.test-btn').forEach((el) => {
-      el.addEventListener('click', () => testAlarm(el.dataset.id));
+      holdToConfirm(el, () => testAlarm(el.dataset.id));
     });
     camListEl.querySelectorAll('.settings-btn').forEach((el) => {
       el.addEventListener('click', () => openSettings(el.dataset.id));
@@ -300,7 +303,7 @@
   }
 
   function testAlarm(camId) {
-    act('/intrusion/test-alarm', { camId }, '🔊 กำลังเล่นเสียงทดสอบ');
+    act('/intrusion/test-alarm', { camId }, 'กำลังทดสอบไซเรน + เสียงเตือน');
   }
 
   function stopAlarm(camId) {

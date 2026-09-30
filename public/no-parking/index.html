@@ -79,7 +79,7 @@
     <div class="controls">
       <button id="armedBtn" class="switch" role="switch" onclick="toggleArmed()"><span>กำลังโหลด...</span><span class="track"></span></button>
       <button onclick="saveZone()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M8 3v5h7M8 21v-7h8v7"/></svg>บันทึกโซน</button>
-      <button onclick="testAlarm()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9a4 4 0 0 1 0 6"/></svg>ทดสอบเสียง</button>
+      <button id="sirenTestBtn" class="siren-test" aria-label="ทดสอบไซเรนหน้าบ้าน กดค้างไว้"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6"/><path d="M4 17h16M10 21h4"/></svg><span>ทดสอบไซเรน (กดค้าง)</span></button>
     </div>
   </section>
 
@@ -183,9 +183,12 @@
     }).finally(() => { togglingArmed = false; });
   }
 
+  // shared.js is deferred — wire the hold after it has loaded.
+  document.addEventListener('DOMContentLoaded', () => holdToConfirm(document.getElementById('sirenTestBtn'), testAlarm));
+
   function testAlarm() {
     statusEl.textContent = 'กำลังเล่น...';
-    act('/no-parking/test-alarm', {}, '🔊 กำลังเล่นเสียงทดสอบ').then(() => { statusEl.textContent = 'เล่นแล้ว'; });
+    act('/no-parking/test-alarm', {}, 'กำลังทดสอบไซเรน + เสียงเตือน').then(() => { statusEl.textContent = 'เล่นแล้ว'; });
   }
 
   function drawDetections(detections, zone) {

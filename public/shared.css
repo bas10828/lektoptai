@@ -207,6 +207,12 @@ a { color: var(--accent); }
 .disarm-btn.holding::after { transform: scaleX(1); transition: transform var(--hold-ms, 1200ms) linear; }
 .disarm-btn > * { position: relative; z-index: 1; }
 
+/* Siren test: real siren at the house + a LINE test message → hold. */
+.siren-test { position: relative; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; }
+.siren-test::after { content: ""; position: absolute; inset: 0; background: rgba(239, 68, 68, 0.5); transform: scaleX(0); transform-origin: left; pointer-events: none; }
+.siren-test.holding::after { transform: scaleX(1); transition: transform var(--hold-ms, 1200ms) linear; }
+.siren-test > * { position: relative; z-index: 1; }
+
 /* ---- Live video stage --------------------------------------------------- */
 .stage {
   position: relative; width: 100%; overflow: hidden;
