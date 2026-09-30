@@ -12,7 +12,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // transcoder previews whichever camera the dashboard currently has
 // selected, via video-stream.js's switchTo() — avoids running one ffmpeg
 // per camera on this CPU-only machine.
-function createIntrusionChannel(camConfigs, dataDir, armedStateStore) {
+function createIntrusionChannel(camConfigs, dataDir, armedStateStore, camSettings) {
   const eventLogPath = path.join(dataDir, 'intrusion-events.log');
   function logEvent(entry) {
     fs.appendFile(eventLogPath, JSON.stringify({ ts: new Date().toISOString(), ...entry }) + '\n', () => {});
@@ -33,6 +33,9 @@ function createIntrusionChannel(camConfigs, dataDir, armedStateStore) {
         // ignore a run whose summed delta lands on a ~16000ms multiple.
         lastRawEventAt: 0,
         phantomRunSum: 0,
+        // Per-camera "don't re-alert within N minutes" (cam-settings.js).
+        cooldownUntil: 0,
+        voiceTesting: false,
       },
       rawEvents: [],
     });
@@ -75,6 +78,7 @@ function createIntrusionChannel(camConfigs, dataDir, armedStateStore) {
       videoOffline: videoController ? videoController.msSinceLastFrame() > VIDEO_OFFLINE_MS : false,
       cams: [...cams.values()].map(({ cfg, state }) => ({
         id: cfg.id, label: cfg.label, camIp: cfg.camIp, ...state,
+        settings: camSettings.get(cfg.id),
       })),
     };
   }
@@ -95,6 +99,21 @@ function createIntrusionChannel(camConfigs, dataDir, armedStateStore) {
     }
     broadcast();
   }
+
+  // Single-camera counterpart of setAllArmed, used by mode.js's per-camera
+  // schedules in "custom" mode. Same side effects as the manual toggle.
+  function setArmed(camId, armed, source) {
+    const c = cams.get(camId);
+    if (!c) return;
+    c.state.armed = armed;
+    armedStateStore.setIntrusion(camId, armed);
+    if (!armed && c.state.running) c.state.stopRequested = true;
+    logEvent({ camId, source, phase: armed ? 'armed' : 'disarmed' });
+    broadcast();
+  }
+
+  let settingsListener = () => {};
+  function onSettingsChanged(fn) { settingsListener = fn; }
 
   function broadcastRaw(camId, entry) {
     const c = cams.get(camId);
@@ -135,11 +154,12 @@ function createIntrusionChannel(camConfigs, dataDir, armedStateStore) {
     const loopStart = Date.now();
     let i = 0;
     try {
-      await cam.setSpeakerVolume(cfg, cfg.speakerVolume);
+      await cam.setSpeakerVolume(cfg, camSettings.get(camId).volume);
       while (Date.now() - loopStart < cfg.maxLoopMs) {
         const file = cfg.warningFiles[i % cfg.warningFiles.length];
         i += 1;
         await fireSiren(cfg);
+        while (state.voiceTesting) await sleep(200); // a voice test holds the talk channel
         await playOnCamera(cfg, file);
         // Checked after every clip (not just at the top) so a disarm or the
         // manual stop button takes effect within one clip's length instead
@@ -154,6 +174,8 @@ function createIntrusionChannel(camConfigs, dataDir, armedStateStore) {
     }
     state.running = false;
     state.stopRequested = false;
+    const { cooldownMin } = camSettings.get(camId);
+    if (source === 'camera' && cooldownMin > 0) state.cooldownUntil = Date.now() + cooldownMin * 60000;
     console.log(`[intrusion:${camId}][warn] warning loop stopped`);
     logEvent({ camId, source, phase: 'warning-stop' });
     broadcast();
@@ -189,7 +211,12 @@ function createIntrusionChannel(camConfigs, dataDir, armedStateStore) {
     console.log(`[intrusion:${camId}] person-event (real, armed=${c.state.armed})`);
     c.state.lastSeenAt = Date.now();
     if (!c.state.armed) return;
-    if (!c.state.running) runWarningLoop(camId, 'camera');
+    if (c.state.running) return;
+    if (Date.now() < c.state.cooldownUntil) {
+      console.log(`[intrusion:${camId}] in cooldown until ${new Date(c.state.cooldownUntil).toISOString()}, not alerting`);
+      return;
+    }
+    runWarningLoop(camId, 'camera');
   }
 
   function onCameraEvent(camId, cfg, obj) {
@@ -358,6 +385,57 @@ function createIntrusionChannel(camConfigs, dataDir, armedStateStore) {
       return true;
     }
 
+    if (req.url === '/settings' && req.method === 'POST') {
+      let body = '';
+      req.on('data', (c) => { body += c; });
+      req.on('end', () => {
+        try {
+          const { camId, ...input } = JSON.parse(body);
+          if (!cams.has(camId)) throw new Error('unknown camId');
+          const saved = camSettings.update(camId, input);
+          settingsListener(camId);
+          broadcast();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, settings: saved }));
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        }
+      });
+      return true;
+    }
+
+    // Voice-only test at a given volume: no siren, and deliberately no
+    // logEvent — a test here must not reach the LINE watcher (it only acts
+    // on warning-start lines) or use up the shared LINE quota.
+    if (req.url === '/test-voice' && req.method === 'POST') {
+      let body = '';
+      req.on('data', (c) => { body += c; });
+      req.on('end', async () => {
+        let c = null;
+        try {
+          const { camId, volume } = JSON.parse(body);
+          c = cams.get(camId);
+          if (!c) throw new Error('unknown camId');
+          if (c.state.running) throw new Error('กล้องนี้กำลังแจ้งเตือนอยู่');
+          if (c.state.voiceTesting) throw new Error('กำลังทดสอบเสียงอยู่');
+          const vol = volume === undefined ? camSettings.get(camId).volume : volume;
+          if (!Number.isInteger(vol) || vol < 0 || vol > 100) throw new Error('volume must be an integer 0-100');
+          c.state.voiceTesting = true;
+          await cam.setSpeakerVolume(c.cfg, vol);
+          await playOnCamera(c.cfg, c.cfg.warningFiles[0]);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: true }));
+        } catch (e) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: e.message }));
+        } finally {
+          if (c) c.state.voiceTesting = false;
+        }
+      });
+      return true;
+    }
+
     if (req.url === '/test-alarm' && req.method === 'POST') {
       let body = '';
       req.on('data', (c) => { body += c; });
@@ -383,7 +461,7 @@ function createIntrusionChannel(camConfigs, dataDir, armedStateStore) {
     return false;
   }
 
-  return { start, handleRequest, allSnapshot, setAllArmed };
+  return { start, handleRequest, allSnapshot, setAllArmed, setArmed, onSettingsChanged, camIds: () => [...cams.keys()] };
 }
 
 module.exports = { createIntrusionChannel };

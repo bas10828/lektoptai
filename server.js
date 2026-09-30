@@ -7,6 +7,7 @@ const { createNoParkingChannel } = require('./channels/no-parking');
 const { createIntrusionChannel } = require('./channels/intrusion');
 const { createModeController } = require('./mode');
 const { createArmedStateStore } = require('./armed-state');
+const { createCamSettingsStore } = require('./cam-settings');
 const { getChannelNamesByIp } = require('./nvr-client');
 const auth = require('./auth');
 
@@ -20,8 +21,9 @@ cfg.noParking.armedDefault = armedStateStore.getNoParking(cfg.noParking.armedDef
 for (const camCfg of cfg.intrusionCams) camCfg.armedDefault = armedStateStore.getIntrusion(camCfg.id, camCfg.armedDefault);
 
 const noParking = createNoParkingChannel(cfg.noParking, __dirname, armedStateStore);
-const intrusion = createIntrusionChannel(cfg.intrusionCams, __dirname, armedStateStore);
-const mode = createModeController({ intrusion, noParking, dataDir: __dirname });
+const camSettings = createCamSettingsStore(__dirname, cfg.intrusionCams);
+const intrusion = createIntrusionChannel(cfg.intrusionCams, __dirname, armedStateStore, camSettings);
+const mode = createModeController({ intrusion, noParking, camSettings, dataDir: __dirname });
 
 function serveStatic(dir, req, res) {
   let filePath = req.url === '/' ? '/index.html' : req.url;
@@ -33,6 +35,8 @@ function serveStatic(dir, req, res) {
     const type = ext === '.html' ? 'text/html'
       : ext === '.js' ? 'application/javascript'
       : ext === '.css' ? 'text/css'
+      : ext === '.json' ? 'application/manifest+json'
+      : ext === '.png' ? 'image/png'
       : 'text/plain';
     res.writeHead(200, { 'Content-Type': type });
     res.end(data);

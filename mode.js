@@ -1,10 +1,15 @@
 const fs = require('fs');
 const path = require('path');
+const { inWindow } = require('./cam-settings');
 
 // House-wide arm/disarm presets, covering all 5 cameras (1 front + 4 back).
 //   away   - full system: front armed + all 4 back-house cams armed, always
 //   home   - front armed; back-house armed only NIGHT_START_HOUR..NIGHT_END_HOUR
-//   custom - hands-off; whatever each camera's own toggle is set to stands
+//   custom - per back-house camera (cam-settings.js): schedule 'manual'
+//            leaves that camera's own toggle alone (the original custom
+//            behaviour); schedule 'window' arms it inside its own start..end
+//            window and disarms it outside, with the same sticky rule as
+//            "home" below. The front camera is never touched in custom.
 //
 // Front (no-parking) and back (intrusion) are both sticky the same way: a
 // manual disarm holds until the next real boundary, not re-forced on every
@@ -31,7 +36,7 @@ function isNightNow() {
   return h >= NIGHT_START_HOUR || h < NIGHT_END_HOUR;
 }
 
-function createModeController({ intrusion, noParking, dataDir }) {
+function createModeController({ intrusion, noParking, camSettings, dataDir }) {
   const statePath = path.join(dataDir, 'mode-state.json');
 
   let mode = 'custom'; // safe default: no auto arm/disarm until the user actually picks a mode
@@ -55,6 +60,10 @@ function createModeController({ intrusion, noParking, dataDir }) {
   // just with an extra boundary (the night clock) that front doesn't have.
   let lastMode = null;
   let lastNight = null;
+  // custom: last schedule-derived value per camera, and cameras whose
+  // settings were just saved (a save is itself a boundary for that camera).
+  const lastWanted = new Map();
+  const dirty = new Set();
   function tick() {
     const night = isNightNow();
     const modeChanged = mode !== lastMode;
@@ -62,8 +71,19 @@ function createModeController({ intrusion, noParking, dataDir }) {
       if (modeChanged) intrusion.setAllArmed(true, 'mode-away');
     } else if (mode === 'home') {
       if (modeChanged || night !== lastNight) intrusion.setAllArmed(night, 'mode-home');
+    } else if (mode === 'custom') {
+      for (const camId of intrusion.camIds()) {
+        const s = camSettings.get(camId);
+        if (s.schedule !== 'window') { lastWanted.delete(camId); continue; }
+        const want = inWindow(s.start, s.end);
+        if (modeChanged || dirty.has(camId) || want !== lastWanted.get(camId)) {
+          intrusion.setArmed(camId, want, 'mode-custom');
+        }
+        lastWanted.set(camId, want);
+      }
     }
-    // custom: no-op — per-camera toggles are the user's own call
+    if (mode !== 'custom') lastWanted.clear();
+    dirty.clear();
     lastMode = mode;
     lastNight = night;
   }
@@ -85,6 +105,11 @@ function createModeController({ intrusion, noParking, dataDir }) {
   function status() {
     return { mode, isNight: isNightNow(), nightStartHour: NIGHT_START_HOUR, nightEndHour: NIGHT_END_HOUR };
   }
+
+  intrusion.onSettingsChanged((camId) => {
+    dirty.add(camId);
+    tick();
+  });
 
   // Boot-time: re-enter the saved mode exactly like a fresh switch into it
   // (back-house synced, front forced on once for away/home).

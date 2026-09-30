@@ -9,3 +9,5 @@ node_modules/
 *.pt
 __pycache__/
 .session-secret
+cam-settings.json
+_ui_backup/

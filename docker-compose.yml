@@ -8,6 +8,10 @@ services:
     # of VPN-routed traffic. Linux-only, fine for this Ubuntu target.
     network_mode: host
     env_file: .env
+    # Also set here (not only in the untracked .env) so a fresh deploy can't
+    # come up in UTC — home mode's night window uses local getHours().
+    environment:
+      TZ: Asia/Bangkok
     volumes:
       - .:/app
     restart: unless-stopped
