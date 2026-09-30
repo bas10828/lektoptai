@@ -6,115 +6,172 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Kanit:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/shared.css">
+<link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
+<meta name="theme-color" content="#0a0c10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<script src="/shared.js" defer></script>
 <style>
-  /* The video stays pinned in place (position: sticky) while everything
-     below it scrolls underneath — simpler and far more robust than trying
-     to detect scroll position and pop it into a floating corner player.
-     `top` is set from JS to the header's actual measured height (differs
-     between the 2-row mobile header and the 1-row desktop one) so the
-     video docks directly under it with no gap or overlap. */
-  .stage-wrap {
-    position: sticky; z-index: 20;
-    width: 100%; margin-bottom: var(--sp-5);
-    padding-top: var(--sp-2); background: var(--bg);
-  }
-  .stage {
-    position: relative; width: 100%; max-height: 42vh; aspect-ratio: 16 / 9;
-    margin: 0 auto;
-    background: #000; border-radius: 16px; overflow: hidden;
-    border: 1px solid var(--card-border); box-shadow: var(--shadow-card);
-  }
+  /* Sticky live view on phones: the video stays pinned under the header
+     while the camera list scrolls beneath it. `top` is set from JS to the
+     header's measured height. */
+  .stage-wrap { position: sticky; z-index: 20; padding-top: var(--sp-2); margin-top: calc(-1 * var(--sp-2)); background: var(--bg); }
+  .stage { aspect-ratio: 16 / 9; max-height: 42vh; margin: 0 auto; }
   #video { display: block; width: 100%; height: 100%; object-fit: contain; background: #000; }
-  .stage-label {
-    position: absolute; top: 10px; left: 10px; z-index: 4;
-    padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--fg);
-    background: rgba(6, 7, 12, 0.7); border-radius: var(--radius-pill);
-    backdrop-filter: blur(6px);
-  }
-  .stage-loading {
-    position: absolute; inset: 0; z-index: 5;
-    display: none; align-items: center; justify-content: center;
-    background: rgba(5,7,13,0.75); color: var(--accent); font-size: 15px; font-weight: 600;
-    pointer-events: none;
-  }
-  .offline-badge {
-    display: none; position: absolute; top: 10px; right: 10px; z-index: 6;
-    padding: 6px 14px; font-size: 13px; font-weight: 700; color: #fff;
-    background: var(--bad); border-radius: var(--radius-pill);
-    box-shadow: 0 6px 18px rgba(255,95,109,0.5);
-  }
-  .offline-badge.show { display: block; }
-  .cam-offline { font-size: 12px; color: var(--bad); font-weight: 600; }
-  .stage-loading.show { display: flex; }
 
-  .layout { display: flex; gap: var(--sp-4); align-items: flex-start; flex-wrap: wrap; }
-  .cams {
-    flex: 1 1 100%;
-    display: grid; grid-template-columns: 1fr; gap: var(--sp-3);
-  }
+  .cams { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
   .cam-card {
-    padding: var(--sp-4); border-radius: var(--radius-md);
-    background: var(--card-bg); border: 1px solid var(--card-border);
-    box-shadow: var(--shadow-card);
-    cursor: pointer; transition: border-color 0.15s ease, transform 0.1s ease;
+    padding: var(--sp-4); border-radius: var(--radius-lg);
+    background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+    cursor: pointer; transition: border-color 0.2s var(--ease), background 0.2s var(--ease), transform 0.1s var(--ease);
   }
+  .cam-card:hover { background: var(--surface-2); }
   .cam-card:active { transform: scale(0.99); }
-  .cam-card.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset, var(--shadow-card); }
-  .cam-card.alert { border-color: var(--bad); box-shadow: 0 0 24px rgba(255,95,109,0.45); }
-  .cam-top { display: flex; align-items: center; gap: 8px; }
-  .cam-name { font-size: 16px; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cam-ip { font-size: 12px; color: var(--muted); white-space: nowrap; }
-  .cam-row { margin-top: var(--sp-2); display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--muted-2); }
-  .cam-actions { margin-top: var(--sp-3); display: flex; gap: 8px; flex-wrap: wrap; }
-  .cam-actions button { flex: 1 1 auto; padding: 13px 10px; font-size: 14px; }
+  .cam-card.selected { border-color: rgba(91, 157, 255, 0.6); box-shadow: 0 0 0 1px rgba(91, 157, 255, 0.4) inset, var(--shadow); }
+  .cam-card.alert { border-color: var(--bad); background: linear-gradient(180deg, rgba(239,68,68,0.16), var(--surface)); box-shadow: 0 0 28px rgba(239, 68, 68, 0.35); }
+  .cam-head { display: flex; align-items: center; gap: 12px; }
+  .cam-meta { flex: 1; min-width: 0; }
+  .cam-name { font-family: var(--font-head); font-size: 18px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cam-sub { font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.4; margin-top: 2px; }
+  .viewing { font-size: 13px; color: var(--accent); font-weight: 600; }
+  .cam-actions { margin-top: var(--sp-3); display: flex; gap: 8px; align-items: center; }
+  .cam-actions .switch { flex: 1 1 auto; }
+  .cam-actions .test-btn, .cam-actions .stop-btn, .cam-actions .settings-btn { flex: 0 0 auto; padding: 12px 14px; }
+  .cam-extra { color: var(--accent); }
+  .sheet-title:focus { outline: none; }
+  .hold-btn { position: relative; overflow: hidden; width: 100%; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .hold-btn::after { content: ""; position: absolute; inset: 0; background: rgba(91, 157, 255, 0.35); transform: scaleX(0); transform-origin: left; pointer-events: none; }
+  .hold-btn.holding::after { transform: scaleX(1); transition: transform var(--hold-ms, 1200ms) linear; }
+  .hold-btn > * { position: relative; z-index: 1; }
+  .time-steppers { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); margin-top: var(--sp-3); }
+  .stepper-label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+  .stepper-ctl { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 4px; border-radius: var(--radius-md); background: var(--bg); border: 1px solid var(--line-2); }
+  .stepper-ctl button { width: 48px; min-height: 48px; padding: 0; font-size: 24px; border-radius: 10px; flex-shrink: 0; }
+  .stepper-ctl output { font-family: var(--font-head); font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  @media (max-width: 440px) {
+    .cam-actions { flex-wrap: wrap; }
+    .cam-actions .switch { flex-basis: 100%; }
+    .cam-actions .settings-btn, .cam-actions .test-btn, .cam-actions .stop-btn { flex: 1 1 0; }
+  }
 
-  .log-panel { margin-top: var(--sp-4); border-radius: 14px; background: var(--card-bg); border: 1px solid var(--card-border); overflow: hidden; }
-  .log-panel summary { padding: 12px 14px; font-size: 14px; color: var(--accent); cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .log-body { padding: 4px 14px 10px; font-size: 12px; max-height: 220px; overflow-y: auto; }
-  .log-row { padding: 6px 0; color: var(--muted-2); border-bottom: 1px solid rgba(127,178,255,0.08); font-family: "Consolas", monospace; word-break: break-all; }
+  .log-body { padding: 0 16px 12px; font-size: 12px; max-height: 240px; overflow-y: auto; }
+  .log-body .log-row { padding: 6px 0; color: var(--fg-2); border-bottom: 1px solid var(--line); font-family: "Consolas", ui-monospace, monospace; word-break: break-all; }
 
-  @media (min-width: 640px) {
-    .cams { grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 640px) { .cams { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (min-width: 1024px) {
+    .stage-wrap { position: static; margin-top: 0; padding-top: 0; background: none; }
+    .stage { max-height: 62vh; }
   }
 </style>
 </head>
 <body>
 <header class="app-header">
-  <span class="app-title">VIGI Control</span>
-  <nav class="tab-bar">
-    <a href="/no-parking">🚗 หน้าบ้าน</a>
-    <a href="/intrusion" class="active">🚨 หลังบ้าน</a>
-  </nav>
-  <div class="mode-controls" id="modeControls">
-    <button class="mode-btn" data-mode="away" onclick="setMode('away')">🚪 ไม่อยู่บ้าน<br>(เปิดทั้งหมด)</button>
-    <button class="mode-btn" data-mode="home" onclick="setMode('home')">🏠 อยู่บ้าน<br>(เปิดเฉพาะดึก)</button>
-    <button class="mode-btn" data-mode="custom" onclick="setMode('custom')">⚙️ กำหนดเอง<br>(คุมทีละกล้อง)</button>
-    <button class="mode-btn danger" onclick="masterSetArmed(false)">🔴 ปิดระบบทั้งหมด</button>
-  </div>
+  <span class="app-title"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 10.5l5-3v9l-5-3"/></svg></span>VIGI Control</span>
   <a class="logout-link" href="#" onclick="logout()">ออกจากระบบ</a>
 </header>
+<nav class="tab-bar" aria-label="เลือกโซน">
+  <a href="/no-parking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M3 13l2-6a2 2 0 0 1 2-1.4h10A2 2 0 0 1 19 7l2 6v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1z"/></svg><span>หน้าบ้าน</span></a>
+  <a href="/intrusion" class="active" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 7.9-8 9-4.8-1.1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>หลังบ้าน</span></a>
+</nav>
 
 <div class="page">
+  <section class="system-card" aria-label="สถานะและโหมดระบบ">
+    <div class="status-hero off" id="statusHero" role="status" aria-live="polite">
+      <span class="sh-icon"><span class="spinner"></span></span>
+      <div><div class="sh-title">กำลังโหลด...</div><div class="sh-sub"></div></div>
+    </div>
+    <div class="mode-controls" id="modeControls" role="group" aria-label="โหมดระบบ">
+      <button class="mode-btn" data-mode="away" onclick="setMode('away')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h5v18h-5M14 12H5m0 0l3-3m-3 3l3 3"/></svg><span class="mb-t">ไม่อยู่บ้าน</span><span class="mb-s">เปิดทั้งหมด</span></button>
+      <button class="mode-btn" data-mode="home" onclick="setMode('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg><span class="mb-t">อยู่บ้าน</span><span class="mb-s">เปิดเฉพาะดึก</span></button>
+      <button class="mode-btn" data-mode="custom" onclick="setMode('custom')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span class="mb-t">กำหนดเอง</span><span class="mb-s">คุมทีละกล้อง</span></button>
+    </div>
+    <button class="disarm-btn" data-hold aria-label="ปิดระบบทั้งหมด กดค้างไว้เพื่อยืนยัน"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9M6.3 7a8 8 0 1 0 11.4 0"/></svg><span>ปิดระบบทั้งหมด</span><span class="mb-s">· กดค้างไว้</span></button>
+  </section>
+
   <div class="stage-wrap" id="stageWrap">
     <div class="stage" id="stage">
-      <div class="stage-label" id="stageLabel">-</div>
-      <div class="stage-loading" id="stageLoading">🔄 กำลังเปลี่ยนกล้อง...</div>
-      <div class="offline-badge" id="offlineBadge">🔴 กล้องขาดการเชื่อมต่อ</div>
-      <img id="video" src="/intrusion/stream.mjpg" alt="camera feed" />
+      <div class="stage-top"><span class="live-badge"><i></i>LIVE</span><span class="stage-label" id="stageLabel">-</span><span class="stage-clock" data-clock></span></div>
+      <img id="video" src="/intrusion/stream.mjpg" alt="ภาพสดจากกล้องหลังบ้าน" />
+      <div class="stage-center" id="stageLoading"><span class="spinner"></span>กำลังเปลี่ยนกล้อง...</div>
+      <div class="stage-center offline" id="offlineBadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M9 5h5a2 2 0 0 1 2 2v3l5-3v10M16 16v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2"/></svg>กล้องขาดการเชื่อมต่อ<br><small>ระบบกำลังลองเชื่อมต่อใหม่</small></div>
     </div>
   </div>
 
-  <div class="layout">
-    <div class="cams" id="camList"></div>
-  </div>
+  <section>
+    <div class="section-head"><h2 class="section-label">กล้องหลังบ้าน</h2><span class="section-meta">แตะการ์ดเพื่อดูภาพสด</span></div>
+    <div class="cams" id="camList"><div class="skeleton"></div><div class="skeleton"></div></div>
+  </section>
 
   <details class="log-panel" id="logPanel">
-    <summary>📋 Event log ละเอียด (สำหรับดีบัก)</summary>
+    <summary>Event log ละเอียด (สำหรับช่าง)</summary>
     <div class="log-body"><div id="logList">-</div></div>
   </details>
 </div>
+
+<dialog class="sheet" id="camSheet" aria-labelledby="sheetTitle">
+  <div class="sheet-grip"></div>
+  <div class="sheet-head">
+    <div><div class="sheet-title" id="sheetTitle" tabindex="-1" autofocus>ตั้งค่ากล้อง</div><div class="sheet-sub">ตั้งค่าเฉพาะกล้องนี้</div></div>
+    <button id="sheetClose">ปิด</button>
+  </div>
+  <div class="sheet-body">
+    <section class="field-group">
+      <h3>เวลาเฝ้า</h3>
+      <p class="note">ใช้เมื่ออยู่โหมด “กำหนดเอง” เท่านั้น · โหมดอื่นเวลาเฝ้าเป็นไปตามโหมด</p>
+      <div class="seg" id="segSchedule">
+        <button data-v="manual">คุมเอง<small>ใช้สวิตช์บนการ์ด</small></button>
+        <button data-v="window">ตามเวลา<small>เปิด-ปิดอัตโนมัติ</small></button>
+      </div>
+      <div id="windowFields">
+        <div class="time-steppers">
+          <div class="stepper"><span class="stepper-label">เริ่มเฝ้า</span>
+            <div class="stepper-ctl"><button data-t="start" data-d="-30" aria-label="เริ่มเฝ้า เร็วขึ้น 30 นาที">−</button><output id="tStart">19:00</output><button data-t="start" data-d="30" aria-label="เริ่มเฝ้า ช้าลง 30 นาที">+</button></div>
+          </div>
+          <div class="stepper"><span class="stepper-label">เลิกเฝ้า</span>
+            <div class="stepper-ctl"><button data-t="end" data-d="-30" aria-label="เลิกเฝ้า เร็วขึ้น 30 นาที">−</button><output id="tEnd">06:00</output><button data-t="end" data-d="30" aria-label="เลิกเฝ้า ช้าลง 30 นาที">+</button></div>
+          </div>
+        </div>
+        <div class="presets">
+          <button data-s="19:00" data-e="06:00">กลางคืน 19:00–06:00</button>
+          <button data-s="22:00" data-e="06:00">ดึก 22:00–06:00</button>
+          <button data-s="08:00" data-e="17:00">กลางวัน 08:00–17:00</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="field-group">
+      <h3>ความดังลำโพง</h3>
+      <div class="vol-row">
+        <input type="range" id="vol" min="0" max="100" step="10" aria-label="ความดังลำโพง">
+        <output id="volOut">100</output>
+      </div>
+      <button id="testVoice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9a4 4 0 0 1 0 6"/></svg>ลองฟังเสียงพูด (ไม่มีไซเรน)</button>
+    </section>
+
+    <section class="field-group">
+      <h3>ไม่เตือนซ้ำภายใน</h3>
+      <p class="note warn" id="cooldownNote">หลังเตือนจบ ระหว่างพัก จะไม่มีเสียงและไม่แจ้ง LINE</p>
+      <div class="seg" id="segCooldown">
+        <button data-v="0">ไม่พัก</button>
+        <button data-v="1">1 นาที</button>
+        <button data-v="5">5 นาที</button>
+        <button data-v="15">15 นาที</button>
+      </div>
+    </section>
+
+    <section class="field-group">
+      <h3>ใช้ค่านี้กับทุกกล้อง</h3>
+      <p class="note">คัดลอกการตั้งค่าทั้งหมดด้านบนไปใส่ทุกกล้องหลังบ้าน</p>
+      <button class="hold-btn" id="saveAll"><span>กดค้างไว้เพื่อใช้กับทุกกล้อง</span></button>
+    </section>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn-primary full" id="saveOne">บันทึก</button>
+  </div>
+</dialog>
 
 <script>
   const camListEl = document.getElementById('camList');
@@ -124,10 +181,6 @@
   const offlineBadgeEl = document.getElementById('offlineBadge');
   const logListEl = document.getElementById('logList');
   const videoEl = document.getElementById('video');
-
-  function logout() {
-    fetch('/logout', { method: 'POST' }).then(() => { window.location.href = '/login'; });
-  }
 
   // Dock the sticky video directly under the header — its height differs
   // between the 2-row mobile layout and the 1-row desktop one, so measure
@@ -149,29 +202,43 @@
     stageLabelEl.textContent = (data.cams.find((c) => c.id === data.selectedCamId) || {}).label || '-';
     offlineBadgeEl.classList.toggle('show', !!data.videoOffline);
 
-    camListEl.innerHTML = data.cams.map((c) => `
-      <div class="cam-card ${c.id === data.selectedCamId ? 'selected' : ''} ${c.running ? 'alert' : ''}" data-id="${c.id}">
-        <div class="cam-top">
+    updateHero(data);
+    camListEl.innerHTML = data.cams.map((c) => {
+      const chip = c.running ? '<span class="chip bad">กำลังแจ้งเตือน</span>'
+        : !c.connected ? '<span class="chip bad">ขาดการเชื่อมต่อ</span>'
+        : c.armed ? '<span class="chip good">เฝ้าอยู่</span>' : '<span class="chip off">ปิดอยู่</span>';
+      const last = c.lastAlertAt ? 'ล่าสุด ' + new Date(c.lastAlertAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : 'ยังไม่เคยแจ้งเตือน';
+      const viewing = c.id === data.selectedCamId;
+      const st = c.settings || {};
+      const extras = [];
+      if (st.schedule === 'window') extras.push(window.currentMode === 'custom' ? `เฝ้าตามเวลา ${st.start}–${st.end}` : `ตั้งเวลา ${st.start}–${st.end} (ใช้ในโหมดกำหนดเอง)`);
+      if (c.cooldownUntil > Date.now()) extras.push('พักเตือนถึง ' + new Date(c.cooldownUntil).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+      return `
+      <div class="cam-card ${viewing ? 'selected' : ''} ${c.running ? 'alert' : ''}" data-id="${c.id}" tabindex="0" role="button" aria-label="ดูภาพ ${c.label}">
+        <div class="cam-head">
           <span class="dot ${!c.connected ? 'dot-bad' : c.armed ? 'dot-good' : 'dot-muted'}"></span>
-          <span class="cam-name">${c.label}</span>
-          <span class="cam-ip">${c.camIp}</span>
-        </div>
-        <div class="cam-row">
-          <span>${c.connected ? `แจ้งเตือนแล้ว ${c.alertCount} ครั้ง` : '<span class="cam-offline">🔴 ขาดการเชื่อมต่อ</span>'}</span>
-          <span>${c.lastAlertAt ? new Date(c.lastAlertAt).toLocaleTimeString('th-TH') : '-'}</span>
+          <div class="cam-meta">
+            <div class="cam-name">${c.label}</div>
+            <div class="cam-sub">${viewing ? '<span class="viewing">● กำลังดู</span> · ' : ''}แจ้งเตือน ${c.alertCount} ครั้ง · ${last}</div>
+            ${extras.length ? `<div class="cam-sub cam-extra">${extras.join(' · ')}</div>` : ''}
+          </div>
+          ${chip}
         </div>
         <div class="cam-actions">
-          <button class="armed-btn ${c.armed ? '' : 'btn-off'}" data-id="${c.id}">${c.armed ? '🟢 ระบบเปิดอยู่ (กดเพื่อปิด)' : '🔴 ระบบปิดอยู่ (กดเพื่อเปิด)'}</button>
-          <button class="test-btn" data-id="${c.id}">🔊 ทดสอบ</button>
-          ${c.running ? `<button class="stop-btn btn-danger" data-id="${c.id}">⏹ หยุด</button>` : ''}
+          <button class="switch armed-btn ${c.armed ? 'on' : ''}" role="switch" aria-checked="${c.armed}" data-id="${c.id}"><span>${c.armed ? 'เฝ้าอยู่' : 'ปิดอยู่'}</span><span class="track"></span></button>
+          ${c.running
+            ? `<button class="stop-btn btn-danger" data-id="${c.id}">หยุดเสียง</button>`
+            : `<button class="settings-btn" data-id="${c.id}" aria-label="ตั้งค่า ${c.label}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>ตั้งค่า</button><button class="test-btn" data-id="${c.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9a4 4 0 0 1 0 6"/></svg>ทดสอบ</button>`}
         </div>
-      </div>
-    `).join('');
+      </div>`; }).join('');
 
     camListEl.querySelectorAll('.cam-card').forEach((el) => {
       el.addEventListener('click', (e) => {
         if (e.target.closest('button')) return;
         selectCam(el.dataset.id);
+      });
+      el.addEventListener('keydown', (e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && e.target === el) { e.preventDefault(); selectCam(el.dataset.id); }
       });
     });
     camListEl.querySelectorAll('.armed-btn').forEach((el) => {
@@ -180,9 +247,31 @@
     camListEl.querySelectorAll('.test-btn').forEach((el) => {
       el.addEventListener('click', () => testAlarm(el.dataset.id));
     });
+    camListEl.querySelectorAll('.settings-btn').forEach((el) => {
+      el.addEventListener('click', () => openSettings(el.dataset.id));
+    });
     camListEl.querySelectorAll('.stop-btn').forEach((el) => {
       el.addEventListener('click', () => stopAlarm(el.dataset.id));
     });
+  }
+
+  function updateHero(data) {
+    const cams = data.cams;
+    const total = cams.length;
+    const armed = cams.filter((c) => c.armed).length;
+    const offline = cams.filter((c) => !c.connected);
+    const firing = cams.filter((c) => c.running);
+    const last = cams.map((c) => c.lastAlertAt).filter(Boolean).sort().pop();
+    const lastTxt = last ? 'แจ้งเตือนล่าสุด ' + new Date(last).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : 'ยังไม่มีการแจ้งเตือน';
+    if (firing.length) {
+      setStatusHero('alert', 'พบคนหลังบ้าน: ' + firing.map((c) => c.label).join(', '), 'กำลังเล่นเสียงเตือน · ' + lastTxt);
+    } else if (offline.length) {
+      setStatusHero('warn', 'กล้องขาดการเชื่อมต่อ ' + offline.length + ' ตัว', offline.map((c) => c.label).join(', ') + ' · ' + lastTxt);
+    } else if (armed === 0) {
+      setStatusHero('off', 'ระบบหลังบ้านปิดอยู่', 'ไม่มีกล้องที่เฝ้าอยู่ · ' + lastTxt);
+    } else {
+      setStatusHero('ok', 'ปลอดภัย · เฝ้าอยู่ ' + armed + '/' + total + ' กล้อง', lastTxt);
+    }
   }
 
   function selectCam(camId) {
@@ -202,38 +291,20 @@
     clearTimeout(loadingTimer);
     loadingTimer = setTimeout(() => stageLoadingEl.classList.remove('show'), 3000);
 
-    fetch('/intrusion/select', { method: 'POST', body: JSON.stringify({ camId }) });
+    act('/intrusion/select', { camId });
   }
 
   function toggleArmed(camId) {
-    fetch('/intrusion/toggle-armed', { method: 'POST', body: JSON.stringify({ camId }) });
+    const cam = lastData && lastData.cams.find((c) => c.id === camId);
+    act('/intrusion/toggle-armed', { camId }, cam ? (cam.armed ? 'ปิดระบบ ' : 'เปิดระบบ ') + cam.label + ' แล้ว' : null);
   }
-
-  function masterSetArmed(armed) {
-    const action = armed ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
-    if (!confirm(`ยืนยัน${action}ทั้งหมด (หน้าบ้าน + หลังบ้าน)?`)) return;
-    fetch('/no-parking/set-armed', { method: 'POST', body: JSON.stringify({ armed }) });
-    fetch('/intrusion/set-all-armed', { method: 'POST', body: JSON.stringify({ armed }) });
-  }
-
-  const modeLabels = { away: 'ไม่อยู่บ้าน (หลังบ้านเต็มระบบตลอด)', home: 'อยู่บ้าน (หลังบ้านเปิดเฉพาะดึก)', custom: 'กำหนดเอง (คุมทีละกล้อง)' };
-  function setMode(m) {
-    if (!confirm(`เปลี่ยนโหมดเป็น "${modeLabels[m]}"?`)) return;
-    fetch('/mode/set', { method: 'POST', body: JSON.stringify({ mode: m }) }).then(refreshMode);
-  }
-  function refreshMode() {
-    fetch('/mode/status', { cache: 'no-store' }).then((r) => r.json()).then((d) => {
-      document.querySelectorAll('.mode-btn').forEach((b) => b.classList.toggle('active', b.dataset.mode === d.mode));
-    });
-  }
-  refreshMode();
 
   function testAlarm(camId) {
-    fetch('/intrusion/test-alarm', { method: 'POST', body: JSON.stringify({ camId }) });
+    act('/intrusion/test-alarm', { camId }, '🔊 กำลังเล่นเสียงทดสอบ');
   }
 
   function stopAlarm(camId) {
-    fetch('/intrusion/stop-alarm', { method: 'POST', body: JSON.stringify({ camId }) });
+    act('/intrusion/stop-alarm', { camId }, '⏹ หยุดเสียงแล้ว');
   }
 
   // Plain polling, not EventSource/SSE — a Cloudflare tunnel buffers
@@ -271,6 +342,82 @@
   videoEl.addEventListener('error', () => {
     setTimeout(() => { videoEl.src = '/intrusion/stream.mjpg?_=' + Date.now(); }, retryDelay);
     retryDelay = Math.min(retryDelay * 1.5, 15000);
+  });
+
+
+  // ---- per-camera settings sheet ------------------------------------------
+  // Lives outside #camList on purpose: render() rebuilds the list every poll,
+  // which would reset a slider mid-drag. The sheet edits a local draft and
+  // only talks to the server on an explicit save.
+  const sheet = document.getElementById('camSheet');
+  const byId = (id) => document.getElementById(id);
+  let sheetCamId = null;
+  let draft = null;
+
+  function fillSheet() {
+    document.querySelectorAll('#segSchedule button').forEach((b) => b.classList.toggle('active', b.dataset.v === draft.schedule));
+    document.querySelectorAll('#segCooldown button').forEach((b) => b.classList.toggle('active', Number(b.dataset.v) === draft.cooldownMin));
+    byId('windowFields').hidden = draft.schedule !== 'window';
+    byId('tStart').textContent = draft.start;
+    byId('tEnd').textContent = draft.end;
+    byId('vol').value = draft.volume;
+    byId('volOut').textContent = draft.volume;
+    byId('cooldownNote').hidden = draft.cooldownMin === 0;
+  }
+
+  function openSettings(camId) {
+    const cam = lastData && lastData.cams.find((c) => c.id === camId);
+    if (!cam || !cam.settings) return;
+    sheetCamId = camId;
+    draft = { ...cam.settings };
+    byId('sheetTitle').textContent = cam.label;
+    fillSheet();
+    sheet.showModal();
+  }
+
+  document.querySelectorAll('#segSchedule button').forEach((b) => b.addEventListener('click', () => { draft.schedule = b.dataset.v; fillSheet(); }));
+  document.querySelectorAll('#segCooldown button').forEach((b) => b.addEventListener('click', () => { draft.cooldownMin = Number(b.dataset.v); fillSheet(); }));
+  document.querySelectorAll('.presets button').forEach((b) => b.addEventListener('click', () => { draft.start = b.dataset.s; draft.end = b.dataset.e; fillSheet(); }));
+  // − / + in 30-minute steps instead of <input type=time>: the native picker
+  // follows the phone's locale and can show AM/PM, which is easy to misread.
+  function shiftTime(hhmm, deltaMin) {
+    const [h, m] = hhmm.split(':').map(Number);
+    const t = (((h * 60 + m + deltaMin) % 1440) + 1440) % 1440;
+    const snapped = Math.round(t / 30) * 30 % 1440;
+    return String(Math.floor(snapped / 60)).padStart(2, '0') + ':' + String(snapped % 60).padStart(2, '0');
+  }
+  document.querySelectorAll('.stepper-ctl button').forEach((b) => b.addEventListener('click', () => {
+    draft[b.dataset.t] = shiftTime(draft[b.dataset.t], Number(b.dataset.d));
+    fillSheet();
+  }));
+  byId('vol').addEventListener('input', (e) => { draft.volume = Number(e.target.value); byId('volOut').textContent = draft.volume; });
+  byId('sheetClose').addEventListener('click', () => sheet.close());
+  sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); }); // backdrop tap
+
+  function validDraft() {
+    if (draft.schedule === 'window' && draft.start === draft.end) { toast('เวลาเริ่มกับเวลาเลิกต้องไม่เท่ากัน', 'bad'); return false; }
+    return true;
+  }
+
+  byId('saveOne').addEventListener('click', async () => {
+    if (!validDraft()) return;
+    const r = await act('/intrusion/settings', { camId: sheetCamId, ...draft }, 'บันทึกการตั้งค่าแล้ว');
+    if (r) sheet.close();
+  });
+
+  // shared.js is `defer`red, so it only exists once DOMContentLoaded fires —
+  // calling holdToConfirm at top level here would throw and kill this script.
+  document.addEventListener('DOMContentLoaded', () => holdToConfirm(byId('saveAll'), async () => {
+    if (!validDraft() || !lastData) return;
+    const results = await Promise.all(lastData.cams.map((c) => act('/intrusion/settings', { camId: c.id, ...draft })));
+    if (results.every(Boolean)) { toast('ใช้การตั้งค่านี้กับทุกกล้องแล้ว', 'ok'); sheet.close(); }
+  }));
+
+  byId('testVoice').addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    await act('/intrusion/test-voice', { camId: sheetCamId, volume: draft.volume }, 'เล่นเสียงทดสอบแล้ว');
+    btn.disabled = false;
   });
 
   connectState();

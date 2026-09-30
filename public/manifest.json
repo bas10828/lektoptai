@@ -1,0 +1,13 @@
+{
+  "name": "VIGI Control",
+  "short_name": "VIGI",
+  "start_url": "/no-parking",
+  "display": "standalone",
+  "background_color": "#06070c",
+  "theme_color": "#06070c",
+  "lang": "th",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

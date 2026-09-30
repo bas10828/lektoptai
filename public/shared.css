@@ -1,218 +1,424 @@
-/* Shared design system for vigi-control — one visual language across the
-   login page, no-parking, and intrusion dashboards. Mobile-first: base
-   rules target phone width, min-width media queries add desktop/tablet
-   refinements on top. */
+/* vigi-control design system — "calm security console".
+   Neutral graphite surfaces; colour is reserved for meaning (green = guarded,
+   amber = needs attention, red = alarm) so the eye goes straight to what
+   matters. Zone colours (หน้าบ้าน green / หลังบ้าน orange) are kept from the
+   old UI — the primary user (60+) relies on them to tell the tabs apart.
+   Mobile-first; min-width queries layer desktop on top. */
 
 :root {
-  --bg: #06070c;
-  --bg-2: #0b0f1a;
-  --fg: #eef3fb;
-  --muted: #7a8db3;
-  --muted-2: #b0c2e6;
-  --accent: #6ea8ff;
-  --accent-2: #8b7bff;
-  --accent-dim: rgba(110, 168, 255, 0.45);
-  --good: #2fd889;
-  --bad: #ff5f6d;
-  --card-bg: linear-gradient(180deg, rgba(20, 26, 42, 0.75), rgba(10, 13, 22, 0.75));
-  --card-border: rgba(110, 168, 255, 0.18);
-  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.35);
-  --radius-lg: 22px;
-  --radius-md: 16px;
+  --bg: #0a0c10;
+  --surface: #12151b;
+  --surface-2: #181c24;
+  --surface-3: #20252f;
+  --line: rgba(255, 255, 255, 0.07);
+  --line-2: rgba(255, 255, 255, 0.12);
+  --fg: #f2f4f8;
+  --fg-2: #c3cad6;
+  --muted: #8a93a3;
+  --accent: #5b9dff;
+  --accent-ink: #06101f;
+  --good: #34d399;
+  --good-soft: rgba(52, 211, 153, 0.14);
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.14);
+  --bad: #f87171;
+  --bad-strong: #ef4444;
+  --bad-soft: rgba(248, 113, 113, 0.15);
+  --zone-front: #34d399;
+  --zone-back: #fb923c;
+  --radius-xl: 24px;
+  --radius-lg: 18px;
+  --radius-md: 14px;
   --radius-pill: 999px;
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
-  --font: "Kanit", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 12px 32px rgba(0, 0, 0, 0.35);
+  --font-body: "IBM Plex Sans Thai", "Kanit", -apple-system, "Segoe UI", sans-serif;
+  --font-head: "Kanit", "IBM Plex Sans Thai", -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 * { box-sizing: border-box; }
 
 html, body {
-  margin: 0;
-  min-height: 100%;
-  width: 100%;
-  background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(110, 168, 255, 0.10), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, rgba(139, 123, 255, 0.08), transparent 55%),
-    var(--bg);
-  background-attachment: fixed;
+  margin: 0; min-height: 100%; width: 100%;
+  background: var(--bg);
   color: var(--fg);
-  font-family: var(--font);
+  font-family: var(--font-body);
+  font-size: 16px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
-
+body { background: radial-gradient(900px 480px at 50% -220px, rgba(91, 157, 255, 0.08), transparent 70%), var(--bg); background-attachment: fixed; }
+h1, h2, h3 { font-family: var(--font-head); margin: 0; }
 a { color: var(--accent); }
+::selection { background: rgba(91, 157, 255, 0.35); }
 
-::selection { background: rgba(110, 168, 255, 0.35); }
-
-/* App chrome: title + 2-tab zone switcher, present on every authenticated
-   page so moving between หน้าบ้าน/หลังบ้าน is one tap, not a trip through a
-   separate landing page.
-   Mobile-first, two rows: the tab switcher (most important, full-width so
-   its two tap targets stay big) on its own line, master controls + logout
-   share a second compact line. Fitting all four items on one row was
-   overflowing on real phone widths — five flex children with padding each
-   easily exceed ~360-390px. Desktop collapses back to one row. */
+/* ---- App chrome ---------------------------------------------------------
+   Slim top bar; zone switching lives in a floating dock at the bottom on
+   phones (thumb reach) and moves into the top bar on desktop. The dock sits
+   outside <header> on purpose: backdrop-filter on the header would become
+   the containing block for a position:fixed child. */
 .app-header {
   position: sticky; top: 0; z-index: 30;
-  background: rgba(6, 7, 12, 0.85);
-  backdrop-filter: blur(14px) saturate(140%);
-  border-bottom: 1px solid var(--card-border);
-  padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
   padding-top: calc(var(--sp-3) + env(safe-area-inset-top, 0px));
-  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3);
+  background: rgba(10, 12, 16, 0.8);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border-bottom: 1px solid var(--line);
 }
-.app-title { display: none; }
+.app-title { display: flex; align-items: center; gap: 10px; font-family: var(--font-head); font-size: 18px; font-weight: 600; letter-spacing: 0.01em; }
+.brand-mark { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(145deg, #2b3445, #161b24); border: 1px solid var(--line-2); color: var(--accent); }
+.brand-mark svg { width: 18px; height: 18px; }
+.logout-link {
+  font-size: 14px; font-weight: 500; color: var(--fg-2); text-decoration: none; white-space: nowrap;
+  padding: 8px 14px; border-radius: var(--radius-pill); border: 1px solid var(--line-2);
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+.logout-link:hover { background: var(--surface-2); color: var(--fg); }
+
 .tab-bar {
-  order: 1; width: 100%;
-  display: flex; gap: 6px; background: rgba(110, 168, 255, 0.08);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-pill); padding: 4px;
+  position: fixed; z-index: 40; left: 50%; transform: translateX(-50%);
+  bottom: calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
+  width: min(420px, calc(100% - 24px));
+  display: flex; gap: 4px; padding: 5px;
+  background: rgba(24, 28, 36, 0.86);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid var(--line-2); border-radius: var(--radius-pill);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.6);
 }
 .tab-bar a {
-  flex: 1; text-align: center; text-decoration: none; color: var(--muted);
-  font-size: 15px; font-weight: 700; padding: 14px 10px; border-radius: var(--radius-pill);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  transition: background 0.15s ease, color 0.15s ease;
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 10px; border-radius: var(--radius-pill);
+  font-family: var(--font-head); font-size: 17px; font-weight: 500; text-decoration: none; white-space: nowrap;
+  color: var(--fg-2);
+  transition: background 0.25s var(--ease), color 0.25s var(--ease);
 }
-.tab-bar a.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #05070d; font-weight: 700;
-  box-shadow: 0 4px 14px rgba(110, 168, 255, 0.35);
-}
-/* หน้าบ้าน/หลังบ้าน color-coded (green vs orange) — user kept clicking the
-   wrong one because both used the same blue-purple active color and only
-   the text differed. */
-.tab-bar a[href="/no-parking"] { color: rgba(47, 216, 137, 0.75); }
-.tab-bar a[href="/no-parking"].active {
-  background: linear-gradient(135deg, var(--good), #1fae6e);
-  box-shadow: 0 4px 14px rgba(47, 216, 137, 0.35);
-}
-.tab-bar a[href="/intrusion"] { color: rgba(255, 178, 122, 0.8); }
-.tab-bar a[href="/intrusion"].active {
-  background: linear-gradient(135deg, #ffb27a, #ff8a5c);
-  box-shadow: 0 4px 14px rgba(255, 138, 92, 0.35);
-}
-/* Big, always-labeled mode buttons — designed for easy reading and tapping
-   (user's father, 60+, is the primary user: no icon-only buttons, no
-   hover-only tooltips, no ellipsis-truncated text, generous tap targets).
-   "เปิดระบบทั้งหมด" used to be a separate small icon button but does exactly
-   what "away" already does (see mode.js: away = both systems fully armed,
-   continuously) — merged away, dropped as a distinct control. Only
-   "ปิดระบบทั้งหมด" (full disarm) has no equivalent mode, so it stays as its
-   own clearly red, fully-labeled button in the same row. */
-.mode-controls {
-  order: 2; width: 100%;
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
-}
-.mode-btn {
-  text-align: center; font-size: 14px; font-weight: 700; line-height: 1.3;
-  padding: 14px 8px; min-height: 56px; border-radius: var(--radius-md);
-  color: var(--muted-2); background: rgba(110, 168, 255, 0.08);
-  border: 1px solid var(--card-border);
-  white-space: normal; word-break: keep-all;
-  display: flex; align-items: center; justify-content: center;
-}
-.mode-btn.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #05070d; border-color: transparent;
-}
-.mode-btn.danger { background: rgba(255, 95, 109, 0.14); border-color: var(--bad); color: #ffd9dc; }
-.mode-btn.danger:active { background: rgba(255, 95, 109, 0.26); }
-/* Own button chrome + margin-top, not just a bare small link — on mobile it
-   used to sit as tiny 12px text directly under the "ปิดระบบทั้งหมด" danger
-   button with only the row-gap between them, easy to brush by accident
-   reaching for that button. */
-.logout-link {
-  order: 3; margin-left: auto; margin-top: var(--sp-2); align-self: center;
-  font-size: 13px; font-weight: 600; color: var(--muted-2); text-decoration: none;
-  white-space: nowrap; padding: 8px 14px; border-radius: var(--radius-pill);
-  border: 1px solid var(--card-border); background: rgba(110, 168, 255, 0.06);
-}
+.tab-bar svg { width: 22px; height: 22px; flex-shrink: 0; }
+.tab-bar a[href="/no-parking"] svg { color: var(--zone-front); }
+.tab-bar a[href="/intrusion"] svg { color: var(--zone-back); }
+.tab-bar a.active { color: #0a0c10; font-weight: 600; }
+.tab-bar a.active svg { color: currentColor; }
+.tab-bar a[href="/no-parking"].active { background: var(--zone-front); }
+.tab-bar a[href="/intrusion"].active { background: var(--zone-back); }
 
-.page { max-width: 1200px; margin: 0 auto; padding: var(--sp-4); }
+.page {
+  max-width: 1280px; margin: 0 auto;
+  padding: var(--sp-4);
+  padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: var(--sp-4);
+}
+.page > * { min-width: 0; }
 
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+/* ---- Surfaces ----------------------------------------------------------- */
+.card, .panel-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
   padding: var(--sp-5);
 }
+.panel-card { padding: var(--sp-4); border-radius: var(--radius-lg); }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); margin: 0 2px var(--sp-3); }
+.section-label { font-family: var(--font-head); font-size: 16px; font-weight: 500; color: var(--fg-2); margin: 0; }
+.section-meta { font-size: 14px; color: var(--muted); }
+.hint { color: var(--muted); font-size: 14px; line-height: 1.65; margin: 0; }
 
-.hint { color: var(--muted); font-size: 13px; line-height: 1.65; margin: 0 0 var(--sp-4); }
+/* ---- System card: status + mode in one place --------------------------- */
+.system-card {
+  position: relative; overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  padding: var(--sp-4);
+  transition: border-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+.system-card::before {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 150px; pointer-events: none;
+  background: radial-gradient(440px 150px at 15% 0%, var(--tint, transparent), transparent 70%);
+}
+.system-card > * { position: relative; }
+.system-card:has(.status-hero.ok)    { --tint: rgba(52, 211, 153, 0.18); }
+.system-card:has(.status-hero.warn)  { --tint: rgba(251, 191, 36, 0.18); border-color: rgba(251, 191, 36, 0.35); }
+.system-card:has(.status-hero.alert) { --tint: rgba(239, 68, 68, 0.34); border-color: rgba(248, 113, 113, 0.7); animation: alarm-glow 1.4s ease-in-out infinite; }
+@keyframes alarm-glow { 0%, 100% { box-shadow: 0 0 0 1px rgba(248,113,113,0.5), 0 0 36px rgba(239,68,68,0.35); } 50% { box-shadow: 0 0 0 1px rgba(248,113,113,0.2), 0 0 12px rgba(239,68,68,0.1); } }
 
+.status-hero { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-2) var(--sp-1) var(--sp-4); }
+.sh-icon {
+  width: 56px; height: 56px; border-radius: 18px; flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--surface-3); color: var(--muted);
+  transition: background 0.35s var(--ease), color 0.35s var(--ease);
+}
+.sh-icon svg { width: 30px; height: 30px; }
+.status-hero.ok .sh-icon    { background: var(--good-soft); color: var(--good); }
+.status-hero.warn .sh-icon  { background: var(--warn-soft); color: var(--warn); }
+.status-hero.alert .sh-icon { background: var(--bad-strong); color: #fff; }
+.sh-title { font-family: var(--font-head); font-size: 22px; font-weight: 500; line-height: 1.25; }
+.sh-sub { font-size: 15px; color: var(--fg-2); margin-top: 3px; }
+.status-hero.ok .sh-title    { color: #c9f7e4; }
+.status-hero.warn .sh-title  { color: #fde7b0; }
+.status-hero.alert .sh-title { color: #fff; }
+
+/* Mode: one segmented control, three big labelled options. */
+.mode-controls {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  padding: 4px; border-radius: var(--radius-lg);
+  background: var(--bg); border: 1px solid var(--line);
+}
+.mode-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 82px; padding: 10px 4px; border: 0; border-radius: 14px;
+  background: transparent; color: var(--fg-2);
+  font-family: inherit; cursor: pointer; text-align: center;
+  transition: background 0.25s var(--ease), color 0.25s var(--ease), transform 0.1s var(--ease);
+}
+.mode-btn:hover { background: var(--surface-2); }
+.mode-btn:active { transform: scale(0.97); }
+.mode-btn svg { width: 26px; height: 26px; }
+.mode-btn .mb-t { font-family: var(--font-head); font-size: 16px; font-weight: 500; line-height: 1.2; }
+.mode-btn .mb-s { font-size: 13px; color: var(--muted); line-height: 1.2; }
+.mode-btn.active { background: var(--fg); color: #0a0c10; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); }
+.mode-btn.active:hover { background: var(--fg); }
+.mode-btn.active .mb-t { font-weight: 600; }
+.mode-btn.active .mb-s { color: #4a5363; }
+
+/* Disarm-all: rare + destructive → separated, red, hold-to-confirm. */
+.disarm-btn {
+  position: relative; overflow: hidden; width: 100%;
+  margin-top: var(--sp-3); min-height: 54px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  border-radius: var(--radius-md); border: 1px dashed rgba(248, 113, 113, 0.5);
+  background: transparent; color: #fecaca;
+  font-family: var(--font-head); font-size: 16px; font-weight: 400; cursor: pointer;
+  user-select: none; -webkit-user-select: none; touch-action: none;
+}
+.disarm-btn:hover { background: rgba(239, 68, 68, 0.08); }
+.disarm-btn svg { width: 20px; height: 20px; }
+.disarm-btn .mb-s { font-family: var(--font-body); font-size: 13px; color: rgba(254, 202, 202, 0.7); }
+.disarm-btn::after {
+  content: ""; position: absolute; inset: 0; background: rgba(239, 68, 68, 0.55);
+  transform: scaleX(0); transform-origin: left; pointer-events: none;
+}
+.disarm-btn.holding { border-style: solid; }
+.disarm-btn.holding::after { transform: scaleX(1); transition: transform var(--hold-ms, 1200ms) linear; }
+.disarm-btn > * { position: relative; z-index: 1; }
+
+/* ---- Live video stage --------------------------------------------------- */
+.stage {
+  position: relative; width: 100%; overflow: hidden;
+  background: #000; border-radius: var(--radius-xl);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.stage-top {
+  position: absolute; inset: 0 0 auto 0; z-index: 4; pointer-events: none;
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px 28px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.65), transparent);
+}
+.live-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px;
+  border-radius: 6px; background: rgba(239, 68, 68, 0.95); color: #fff;
+  font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
+}
+.live-badge i { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: live-dot 1.6s ease-in-out infinite; }
+@keyframes live-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+/* Hide the broken-image alt text while the MJPEG stream (re)connects. */
+.stage img { color: transparent; font-size: 0; }
+.stage-label { font-family: var(--font-head); font-size: 16px; font-weight: 500; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.6); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stage-clock { margin-left: auto; font-size: 14px; color: rgba(255,255,255,0.88); font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px rgba(0,0,0,0.6); white-space: nowrap; }
+.stage-center {
+  position: absolute; inset: 0; z-index: 5; display: none;
+  flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  background: rgba(10, 12, 16, 0.74);
+  font-family: var(--font-head); font-size: 17px; font-weight: 400; color: var(--fg); text-align: center; padding: var(--sp-4);
+  pointer-events: none;
+}
+.stage-center.show { display: flex; }
+.stage-center svg { width: 38px; height: 38px; }
+.stage-center.offline { color: #fecaca; }
+.spinner { width: 32px; height: 32px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.15); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.stage-alarm {
+  position: absolute; inset: auto 12px 12px 12px; z-index: 6; display: none;
+  align-items: center; justify-content: center; gap: 10px; padding: 12px 16px;
+  border-radius: var(--radius-md); background: var(--bad-strong); color: #fff;
+  font-family: var(--font-head); font-size: 17px; font-weight: 500;
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.5);
+  animation: alarm-pulse 1s ease-in-out infinite;
+  pointer-events: none;
+}
+.stage-alarm.show { display: flex; }
+.stage-alarm svg { width: 22px; height: 22px; }
+@keyframes alarm-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.72; } }
+
+/* ---- Buttons ------------------------------------------------------------ */
 button, .btn {
-  background: rgba(110, 168, 255, 0.12);
-  color: var(--fg);
-  border: 1px solid var(--accent-dim);
-  padding: 12px 18px;
-  border-radius: var(--radius-pill);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  -webkit-tap-highlight-color: transparent;
-  transition: border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+  font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer;
+  color: var(--fg); background: var(--surface-2);
+  border: 1px solid var(--line-2); border-radius: var(--radius-pill);
+  padding: 12px 18px; min-height: 48px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease), transform 0.1s var(--ease);
 }
-button:hover, .btn:hover { border-color: var(--good); }
+button:hover, .btn:hover { background: var(--surface-3); }
 button:active, .btn:active { transform: scale(0.97); }
-.btn-on { background: rgba(47, 216, 137, 0.16); border-color: var(--good); color: #d7ffe9; }
-.btn-off { background: rgba(255, 95, 109, 0.14); border-color: var(--bad); color: #ffd9dc; }
-.btn-danger { background: rgba(255, 95, 109, 0.22); border-color: var(--bad); font-weight: 700; }
-.btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #05070d; border: none; box-shadow: 0 6px 18px rgba(110, 168, 255, 0.3); }
+button:disabled { opacity: 0.55; cursor: default; }
+button svg { width: 18px; height: 18px; flex-shrink: 0; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight: 600; }
+.btn-primary:hover { background: #75adff; }
+.btn-danger { background: var(--bad-strong); color: #fff; border-color: transparent; font-weight: 600; }
+.btn-danger:hover { background: #f25555; }
 .btn-block { width: 100%; }
-
-.field { margin-bottom: var(--sp-4); }
-.field label { display: block; font-size: 13px; color: var(--muted-2); margin-bottom: 6px; font-weight: 600; }
-.field input {
-  width: 100%; background: rgba(110, 168, 255, 0.06); color: var(--fg);
-  border: 1px solid var(--card-border); border-radius: var(--radius-md);
-  padding: 13px 14px; font-size: 16px; font-family: inherit;
-  transition: border-color 0.15s ease, background 0.15s ease;
+button:focus-visible, .btn:focus-visible, .tab-bar a:focus-visible, .logout-link:focus-visible, .cam-card:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 2px;
 }
-.field input:focus { outline: none; border-color: var(--accent); background: rgba(110, 168, 255, 0.1); }
 
-.error-text { color: var(--bad); font-size: 13px; margin: 8px 0 0; min-height: 1.2em; }
+/* Toggle switch — always paired with a text label (elderly-UI rule). */
+.switch {
+  justify-content: space-between; gap: 12px;
+  padding: 6px 6px 6px 16px; min-height: 48px;
+  font-weight: 600; color: var(--fg-2);
+}
+.switch .track { width: 50px; height: 30px; border-radius: 15px; background: var(--surface-3); border: 1px solid var(--line-2); position: relative; transition: background 0.25s var(--ease); flex-shrink: 0; }
+.switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #9aa3b2; transition: transform 0.25s var(--ease), background 0.25s var(--ease); }
+.switch.on { color: #c9f7e4; border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.08); }
+.switch.on .track { background: var(--good); border-color: transparent; }
+.switch.on .track::after { transform: translateX(20px); background: #fff; }
 
-/* Small live/armed/offline status dot, used wherever a card needs a
-   one-glance state indicator instead of relying on text or border color
-   alone (accessibility + scan-ability at a glance on a monitoring wall). */
-.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.dot-good { background: var(--good); box-shadow: 0 0 8px var(--good); }
-.dot-bad { background: var(--bad); box-shadow: 0 0 8px var(--bad); }
-.dot-muted { background: var(--muted); }
+/* ---- Chips, dots -------------------------------------------------------- */
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 600; white-space: nowrap; background: var(--surface-3); color: var(--fg-2); }
+.chip.good { background: var(--good-soft); color: #a7f0cf; }
+.chip.warn { background: var(--warn-soft); color: #fde7b0; }
+.chip.bad  { background: var(--bad-soft); color: #fecaca; }
+.chip.off  { color: var(--muted); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.dot-good { background: var(--good); box-shadow: 0 0 0 4px var(--good-soft); }
+.dot-bad { background: var(--bad); box-shadow: 0 0 0 4px var(--bad-soft); }
+.dot-muted { background: #4b5463; }
 
-/* Phones (the default, unqualified rules above) get full-width single
-   columns and big tap targets already. Tablet/desktop gets more breathing
-   room and multi-column layouts where a page opts in via .page-wide. */
-/* Desktop used to pack the tab-bar (which zone to view) and mode-controls
-   (system on/off) into ONE row, side by side with only 16px between them —
-   two different-purpose control groups sitting close together, both
-   pill/card-shaped and similar height. User kept aiming for a tab and
-   landing on a mode button instead. Fix: keep them on their own full-width
-   rows (same as mobile) at every screen size, with a visible divider line
-   between rows, so "which page" and "system mode" are in different places
-   on screen, not just different colors. */
-/* Grid, not flex-order + auto-margin: with flex, giving tab-bar a
-   max-width so it could sit centered let it silently share line 1 with
-   title+logout again (auto-margin only pushes within whatever items land
-   on the same line) — logout ended up stranded in the gap between title
-   and the tab pills instead of the far corner. Grid places every piece by
-   named area regardless of size, so this can't happen again. */
+/* ---- Stat tiles --------------------------------------------------------- */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); }
+.stat { padding: var(--sp-3); border-radius: var(--radius-md); background: var(--surface-2); border: 1px solid var(--line); min-width: 0; }
+.stat-label { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-value { font-family: var(--font-head); font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat-value.bad { color: var(--bad); }
+
+/* ---- Timeline (alert history) ------------------------------------------ */
+.timeline { max-height: 280px; overflow-y: auto; }
+.timeline .log-row { position: relative; display: flex; justify-content: space-between; gap: var(--sp-3); padding: 11px 4px 11px 22px; font-size: 15px; color: var(--fg); border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.timeline .log-row:last-child { border-bottom: 0; }
+.timeline .log-row::before { content: ""; position: absolute; left: 4px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: var(--bad); }
+.timeline .log-row span:last-child { color: var(--muted); }
+.empty { padding: var(--sp-3) 4px; color: var(--muted); font-size: 15px; }
+
+/* ---- Forms -------------------------------------------------------------- */
+.field { margin-bottom: var(--sp-4); }
+.field label { display: block; font-size: 14px; color: var(--fg-2); margin-bottom: 6px; font-weight: 500; }
+.field input {
+  width: 100%; background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line-2); border-radius: var(--radius-md);
+  padding: 14px 16px; font-size: 17px; font-family: inherit;
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(91, 157, 255, 0.18); }
+.error-text { color: var(--bad); font-size: 14px; margin: 10px 0 0; min-height: 1.3em; text-align: center; }
+
+/* ---- Toast -------------------------------------------------------------- */
+.toast-host { position: fixed; left: 0; right: 0; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); z-index: 100; display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); pointer-events: none; padding: 0 var(--sp-4); }
+.toast {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 12px 18px; border-radius: var(--radius-pill); font-size: 15px; font-weight: 500;
+  background: rgba(32, 37, 47, 0.96); color: var(--fg); border: 1px solid var(--line-2);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+  opacity: 0; transform: translateY(10px) scale(0.98); transition: opacity 0.22s var(--ease), transform 0.22s var(--ease);
+}
+.toast::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex-shrink: 0; }
+.toast.warn::before { background: var(--warn); }
+.toast.bad::before { background: var(--bad); }
+.toast.in { opacity: 1; transform: none; }
+
+/* ---- Skeleton ----------------------------------------------------------- */
+.skeleton { border-radius: var(--radius-lg); min-height: 132px; border: 1px solid var(--line);
+  background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
+  background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ---- Debug log (collapsible) ------------------------------------------- */
+.log-panel { border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--line); overflow: hidden; }
+.log-panel summary { padding: 14px 16px; font-size: 14px; color: var(--muted); cursor: pointer; list-style: none; display: flex; align-items: center; gap: 10px; }
+.log-panel summary::-webkit-details-marker { display: none; }
+.log-panel summary::before { content: "›"; font-size: 20px; line-height: 1; transition: transform 0.2s var(--ease); }
+.log-panel[open] summary::before { transform: rotate(90deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* ---- Tablet+ ------------------------------------------------------------ */
 @media (min-width: 720px) {
-  .app-header {
-    padding-left: var(--sp-6); padding-right: var(--sp-6); row-gap: var(--sp-3);
-    display: grid; grid-template-columns: auto 1fr auto;
-    grid-template-areas: "title tabs logout" "modes modes modes";
+  .app-header { padding-left: var(--sp-6); padding-right: var(--sp-6); }
+  .page { padding: var(--sp-5) var(--sp-6) calc(112px + env(safe-area-inset-bottom, 0px)); }
+  .sh-title { font-size: 24px; }
+}
+
+/* Wide screens: zone tabs move up into the header row, content goes two
+   columns (live view left, system card pinned on the right). */
+@media (min-width: 1024px) {
+  .app-header { min-height: 66px; }
+  .tab-bar {
+    top: calc(9px + env(safe-area-inset-top, 0px)); bottom: auto; width: 360px;
+    background: var(--surface); box-shadow: none; padding: 4px; z-index: 31;
   }
-  .app-title { display: block; grid-area: title; font-size: 18px; font-weight: 800; letter-spacing: 0.01em; color: var(--fg); white-space: nowrap; }
-  .logout-link { grid-area: logout; margin-left: 0; margin-top: 0; }
-  .tab-bar { grid-area: tabs; width: 100%; max-width: 480px; margin: 0 auto; padding: 6px; }
-  .tab-bar a { font-size: 16px; padding: 14px 10px; }
-  .mode-controls {
-    grid-area: modes; width: 100%; grid-template-columns: repeat(4, 1fr); gap: 10px;
-    padding-top: var(--sp-3); border-top: 1px solid var(--card-border);
+  .tab-bar a { padding: 8px 10px; font-size: 16px; }
+  .page {
+    display: grid; gap: var(--sp-5);
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: start;
+    padding-bottom: var(--sp-6);
   }
-  .mode-btn { min-height: 52px; padding: 10px 14px; font-size: 14px; }
-  .page { padding: var(--sp-6); }
+  .page > .system-card { grid-column: 2; grid-row: 1 / span 20; position: sticky; top: 90px; }
+  .page > :not(.system-card) { grid-column: 1; }
+  .toast-host { bottom: var(--sp-6); }
+}
+
+/* ---- Bottom sheet (native <dialog>) ------------------------------------ */
+.sheet {
+  width: 100%; max-width: 520px; max-height: 92vh; margin: auto auto 0; padding: 0;
+  border: 1px solid var(--line-2); border-bottom: 0; border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--surface); color: var(--fg); box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.sheet[open] { display: flex; flex-direction: column; animation: sheet-up 0.28s var(--ease); }
+.sheet::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(2px); }
+@keyframes sheet-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.sheet-grip { width: 44px; height: 5px; border-radius: 3px; background: var(--line-2); margin: 10px auto 0; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-5) var(--sp-2); }
+.sheet-title { font-family: var(--font-head); font-size: 20px; font-weight: 500; }
+.sheet-sub { font-size: 14px; color: var(--muted); }
+.sheet-body { padding: var(--sp-2) var(--sp-5) var(--sp-4); overflow-y: auto; display: flex; flex-direction: column; gap: var(--sp-5); }
+.sheet-foot { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); padding: var(--sp-3) var(--sp-5) calc(var(--sp-4) + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: var(--surface); }
+.sheet-foot .full { grid-column: 1 / -1; }
+.field-group h3 { font-family: var(--font-head); font-size: 16px; font-weight: 500; margin: 0 0 4px; }
+.field-group .note { font-size: 14px; color: var(--muted); margin: 0 0 var(--sp-3); }
+.field-group .note.warn { color: #fde7b0; }
+
+/* Generic segmented control (sheet options). */
+.seg { display: grid; grid-auto-columns: 1fr; grid-auto-flow: column; gap: 4px; padding: 4px; border-radius: var(--radius-md); background: var(--bg); border: 1px solid var(--line); }
+.seg button { border: 0; border-radius: 10px; background: transparent; min-height: 52px; padding: 8px 6px; font-size: 15px; color: var(--fg-2); flex-direction: column; gap: 0; line-height: 1.25; }
+.seg button small { font-size: 12px; color: var(--muted); font-weight: 400; }
+.seg button:hover { background: var(--surface-2); }
+.seg button.active { background: var(--fg); color: #0a0c10; font-weight: 600; }
+.seg button.active small { color: #4a5363; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--sp-3); }
+.presets button { min-height: 40px; padding: 8px 14px; font-size: 14px; }
+.vol-row { display: flex; align-items: center; gap: var(--sp-3); }
+.vol-row output { font-family: var(--font-head); font-size: 26px; font-weight: 500; min-width: 3ch; text-align: right; font-variant-numeric: tabular-nums; }
+.vol-row input[type=range] { flex: 1; height: 40px; accent-color: var(--accent); }
+.vol-row + button { margin-top: var(--sp-3); width: 100%; }
+
+@media (min-width: 720px) {
+  .sheet { margin: auto; border-bottom: 1px solid var(--line-2); border-radius: var(--radius-xl); }
 }

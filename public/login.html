@@ -6,19 +6,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Kanit:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/shared.css">
 <style>
-  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-  .login-card { width: 100%; max-width: 360px; }
-  .login-title { font-size: 20px; font-weight: 800; color: var(--accent); margin: 0 0 4px; text-align: center; }
-  .login-sub { font-size: 13px; color: var(--muted); margin: 0 0 22px; text-align: center; }
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; min-height: 100dvh; padding: 20px; }
+  .login-card { width: 100%; max-width: 380px; padding: var(--sp-6) var(--sp-5); }
+  .login-brand { width: 56px; height: 56px; margin: 0 auto var(--sp-4); border-radius: 18px; }
+  .login-brand svg { width: 28px; height: 28px; }
+  .login-title { font-family: var(--font-head); font-size: 24px; font-weight: 500; margin: 0 0 4px; text-align: center; }
+  .login-sub { font-size: 15px; color: var(--muted); margin: 0 0 var(--sp-5); text-align: center; }
+  #submitBtn { margin-top: var(--sp-2); min-height: 52px; font-size: 17px; }
 </style>
 </head>
 <body>
   <div class="card login-card">
-    <div class="login-title">VIGI Control</div>
-    <div class="login-sub">เข้าสู่ระบบเพื่อดูกล้อง</div>
+    <div class="brand-mark login-brand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 10.5l5-3v9l-5-3"/></svg></div>
+    <h1 class="login-title">VIGI Control</h1>
+    <p class="login-sub">ระบบกล้องเฝ้าบ้าน · เข้าสู่ระบบเพื่อดูภาพสด</p>
     <form id="loginForm">
       <div class="field">
         <label for="username">ชื่อผู้ใช้</label>
@@ -28,7 +32,7 @@
         <label for="password">รหัสผ่าน</label>
         <input id="password" name="password" type="password" autocomplete="current-password" required />
       </div>
-      <button type="submit" class="btn-block" id="submitBtn">เข้าสู่ระบบ</button>
+      <button type="submit" class="btn-primary btn-block" id="submitBtn">เข้าสู่ระบบ</button>
       <div class="error-text" id="errorText"></div>
     </form>
   </div>

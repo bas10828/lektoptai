@@ -6,88 +6,96 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&family=Kanit:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/shared.css">
+<link rel="manifest" href="/manifest.json" crossorigin="use-credentials">
+<meta name="theme-color" content="#0a0c10">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<script src="/shared.js" defer></script>
 <style>
-  .stage { position: relative; width: 100%; background: #000; border-radius: 16px; overflow: hidden; border: 1px solid var(--card-border); box-shadow: var(--shadow-card); user-select: none; margin-bottom: var(--sp-5); }
-  #video { display: block; width: 100%; height: auto; }
-  .offline-badge {
-    display: none; position: absolute; top: 10px; left: 10px; z-index: 6;
-    padding: 6px 14px; font-size: 13px; font-weight: 700; color: #fff;
-    background: var(--bad); border-radius: var(--radius-pill);
-    box-shadow: 0 6px 18px rgba(255,95,109,0.5);
-  }
-  .offline-badge.show { display: block; }
-  svg#overlay { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
-  .zoneRect { fill: rgba(47,216,137,0.12); stroke: var(--good); stroke-width: 2; stroke-dasharray: 6 4; }
-  .zoneHandle { fill: var(--good); stroke: #05070d; stroke-width: 2; cursor: grab; r: 14; }
-  .detBox { fill: none; stroke: #ffb27a; stroke-width: 2; }
-  .detBox.hit { stroke: var(--bad); stroke-width: 3; }
-  .detLabel { fill: #ffb27a; font-size: 13px; font-family: "Kanit", sans-serif; }
-  .detLabel.hit { fill: var(--bad); }
-  .panel { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin-bottom: var(--sp-5); }
-  .panel button { flex: 1 1 auto; }
-  #status { width: 100%; text-align: center; font-size: 13px; color: var(--muted); }
-  .readout { padding: var(--sp-4) var(--sp-5); border-radius: var(--radius-md); background: var(--card-bg); border: 1px solid var(--card-border); box-shadow: var(--shadow-card); font-size: 14px; color: var(--muted-2); display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: var(--sp-5); }
-  .readout b { color: var(--fg); font-size: 18px; }
-  .readout .alert b { color: var(--bad); }
-  .banner { padding: 14px 20px; border-radius: var(--radius-md); background: var(--bad); color: #fff; font-weight: 800; text-align: center; display: none; animation: blink 0.9s ease-in-out infinite; margin-bottom: var(--sp-5); box-shadow: 0 8px 24px rgba(255,95,109,0.4); }
-  .banner.show { display: block; }
-  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
-  .log-panel { padding: var(--sp-4) var(--sp-5); border-radius: var(--radius-md); background: var(--card-bg); border: 1px solid var(--card-border); box-shadow: var(--shadow-card); font-size: 13px; max-height: 200px; overflow-y: auto; }
-  .log-row { display: flex; justify-content: space-between; padding: 3px 0; color: var(--muted-2); border-bottom: 1px solid rgba(127,178,255,0.08); }
+  .stage { user-select: none; -webkit-user-select: none; }
+  #video { display: block; width: 100%; height: auto; min-height: 180px; background: #000; }
+  svg#overlay { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; z-index: 3; }
+  .zoneRect { fill: rgba(52, 211, 153, 0.12); stroke: var(--good); stroke-width: 2; stroke-dasharray: 7 5; }
+  .zoneHandle { fill: #fff; stroke: var(--good); stroke-width: 4; cursor: grab; r: 13; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+  .detBox { fill: none; stroke: #fdba74; stroke-width: 2; rx: 4; }
+  .detBox.hit { stroke: var(--bad-strong); stroke-width: 3; }
+  .detLabel { fill: #fdba74; font-size: 13px; font-family: "IBM Plex Sans Thai", sans-serif; font-weight: 600; paint-order: stroke; stroke: rgba(0,0,0,0.7); stroke-width: 3px; }
+  .detLabel.hit { fill: #fecaca; }
+  .stage-caption { display: flex; gap: 8px; align-items: flex-start; margin-top: var(--sp-3); padding: 0 4px; }
+  .stage-caption .legend { width: 14px; height: 14px; margin-top: 4px; flex-shrink: 0; border: 2px dashed var(--good); border-radius: 4px; }
+
+  .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .controls .switch { grid-column: 1 / -1; }
+  #status { font-size: 14px; color: var(--muted); }
 </style>
 </head>
 <body>
 <header class="app-header">
-  <span class="app-title">VIGI Control</span>
-  <nav class="tab-bar">
-    <a href="/no-parking" class="active">🚗 หน้าบ้าน</a>
-    <a href="/intrusion">🚨 หลังบ้าน</a>
-  </nav>
-  <div class="mode-controls" id="modeControls">
-    <button class="mode-btn" data-mode="away" onclick="setMode('away')">🚪 ไม่อยู่บ้าน<br>(เปิดทั้งหมด)</button>
-    <button class="mode-btn" data-mode="home" onclick="setMode('home')">🏠 อยู่บ้าน<br>(เปิดเฉพาะดึก)</button>
-    <button class="mode-btn" data-mode="custom" onclick="setMode('custom')">⚙️ กำหนดเอง<br>(คุมทีละกล้อง)</button>
-    <button class="mode-btn danger" onclick="masterSetArmed(false)">🔴 ปิดระบบทั้งหมด</button>
-  </div>
+  <span class="app-title"><span class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M16 10.5l5-3v9l-5-3"/></svg></span>VIGI Control</span>
   <a class="logout-link" href="#" onclick="logout()">ออกจากระบบ</a>
 </header>
+<nav class="tab-bar" aria-label="เลือกโซน">
+  <a href="/no-parking" class="active" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 17h14M3 13l2-6a2 2 0 0 1 2-1.4h10A2 2 0 0 1 19 7l2 6v4a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1z"/></svg><span>หน้าบ้าน</span></a>
+  <a href="/intrusion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.2 7.9-8 9-4.8-1.1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg><span>หลังบ้าน</span></a>
+</nav>
 
 <div class="page">
-  <p class="hint">ลากมุมกรอบเขียวให้ตรงจุดห้ามจอด — ระบบตรวจรถ (car/truck/bus) ด้วย YOLO ทุกไม่กี่วินาที ถ้า bbox อยู่ตำแหน่งเดิมในโซนติดต่อกันหลายรอบถือว่าจอดนิ่ง ถึงจะเล่นเสียงเตือน</p>
+  <section class="system-card" aria-label="สถานะและโหมดระบบ">
+    <div class="status-hero off" id="statusHero" role="status" aria-live="polite">
+      <span class="sh-icon"><span class="spinner"></span></span>
+      <div><div class="sh-title">กำลังโหลด...</div><div class="sh-sub"></div></div>
+    </div>
+    <div class="mode-controls" id="modeControls" role="group" aria-label="โหมดระบบ">
+      <button class="mode-btn" data-mode="away" onclick="setMode('away')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h5v18h-5M14 12H5m0 0l3-3m-3 3l3 3"/></svg><span class="mb-t">ไม่อยู่บ้าน</span><span class="mb-s">เปิดทั้งหมด</span></button>
+      <button class="mode-btn" data-mode="home" onclick="setMode('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg><span class="mb-t">อยู่บ้าน</span><span class="mb-s">เปิดเฉพาะดึก</span></button>
+      <button class="mode-btn" data-mode="custom" onclick="setMode('custom')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span class="mb-t">กำหนดเอง</span><span class="mb-s">คุมทีละกล้อง</span></button>
+    </div>
+    <button class="disarm-btn" data-hold aria-label="ปิดระบบทั้งหมด กดค้างไว้เพื่อยืนยัน"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9M6.3 7a8 8 0 1 0 11.4 0"/></svg><span>ปิดระบบทั้งหมด</span><span class="mb-s">· กดค้างไว้</span></button>
+  </section>
 
-  <div class="stage">
-    <img id="video" src="/no-parking/stream.mjpg" alt="camera feed" />
-    <div class="offline-badge" id="offlineBadge">🔴 กล้องขาดการเชื่อมต่อ</div>
-    <svg id="overlay">
-      <polygon class="zoneRect" id="zoneRect" points=""></polygon>
-      <circle class="zoneHandle" id="zh0"></circle>
-      <circle class="zoneHandle" id="zh1"></circle>
-      <circle class="zoneHandle" id="zh2"></circle>
-      <circle class="zoneHandle" id="zh3"></circle>
-      <g id="detGroup"></g>
-    </svg>
-  </div>
+  <section>
+    <div class="stage">
+      <div class="stage-top"><span class="live-badge"><i></i>LIVE</span><span class="stage-label">กล้องหน้าบ้าน</span><span class="stage-clock" data-clock></span></div>
+      <img id="video" src="/no-parking/stream.mjpg" alt="ภาพสดจากกล้องหน้าบ้าน" />
+      <svg id="overlay">
+        <polygon class="zoneRect" id="zoneRect" points=""></polygon>
+        <circle class="zoneHandle" id="zh0"></circle>
+        <circle class="zoneHandle" id="zh1"></circle>
+        <circle class="zoneHandle" id="zh2"></circle>
+        <circle class="zoneHandle" id="zh3"></circle>
+        <g id="detGroup"></g>
+      </svg>
+      <div class="stage-center offline" id="offlineBadge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18M9 5h5a2 2 0 0 1 2 2v3l5-3v10M16 16v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2"/></svg>กล้องขาดการเชื่อมต่อ<br><small>ระบบกำลังลองเชื่อมต่อใหม่</small></div>
+      <div class="stage-alarm" id="banner"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 17V11a6 6 0 0 1 12 0v6"/><path d="M4 17h16M10 21h4"/></svg>รถจอดขวางทางเข้า · กำลังแจ้งเตือน</div>
+    </div>
+    <p class="hint stage-caption"><span class="legend"></span><span>กรอบเขียว = จุดห้ามจอด ลากจุดมุมสีขาวเพื่อปรับ แล้วกด “บันทึกโซน” · ถ้ารถจอดนิ่งในกรอบหลายรอบ ระบบจะเล่นเสียงเตือน</span></p>
+  </section>
 
-  <div class="banner" id="banner">🚨 รถจอดขวางทางเข้า — กำลังแจ้งเตือน</div>
+  <section class="panel-card">
+    <div class="section-head"><h2 class="section-label">การควบคุม</h2><span id="status"></span></div>
+    <div class="controls">
+      <button id="armedBtn" class="switch" role="switch" onclick="toggleArmed()"><span>กำลังโหลด...</span><span class="track"></span></button>
+      <button onclick="saveZone()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2z"/><path d="M8 3v5h7M8 21v-7h8v7"/></svg>บันทึกโซน</button>
+      <button onclick="testAlarm()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9a4 4 0 0 1 0 6"/></svg>ทดสอบเสียง</button>
+    </div>
+  </section>
 
-  <div class="panel">
-    <button id="armedBtn" onclick="toggleArmed()">เปิดใช้งานระบบ</button>
-    <button onclick="saveZone()">บันทึกโซน</button>
-    <button onclick="testAlarm()">🔊 ทดสอบเสียง</button>
-    <span id="status"></span>
-  </div>
+  <section class="panel-card">
+    <div class="section-head"><h2 class="section-label">ตัวตรวจจับรถ</h2></div>
+    <div class="stats">
+      <div class="stat"><div class="stat-label">สถานะ AI</div><div class="stat-value" id="readyVal">-</div></div>
+      <div class="stat"><div class="stat-label">รถในภาพ</div><div class="stat-value" id="detCountVal">-</div></div>
+      <div class="stat"><div class="stat-label">แจ้งเตือนแล้ว</div><div class="stat-value bad" id="alertCountVal">0</div></div>
+    </div>
+  </section>
 
-  <div class="readout">
-    <div>YOLO worker: <b id="readyVal">-</b></div>
-    <div>รถที่เจอในเฟรม: <b id="detCountVal">-</b></div>
-    <div class="alert">แจ้งเตือนแล้ว: <b id="alertCountVal">0</b> ครั้ง</div>
-  </div>
-
-  <div class="log-panel">
-    <div id="logList">-</div>
-  </div>
+  <section class="panel-card">
+    <div class="section-head"><h2 class="section-label">ประวัติแจ้งเตือน</h2></div>
+    <div class="timeline" id="logList"><div class="empty">ยังไม่มีการแจ้งเตือน</div></div>
+  </section>
 </div>
 
 <script>
@@ -102,29 +110,6 @@
   const bannerEl = document.getElementById('banner');
   const offlineBadgeEl = document.getElementById('offlineBadge');
 
-  function logout() {
-    fetch('/logout', { method: 'POST' }).then(() => { window.location.href = '/login'; });
-  }
-
-  function masterSetArmed(armed) {
-    const action = armed ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
-    if (!confirm(`ยืนยัน${action}ทั้งหมด (หน้าบ้าน + หลังบ้าน)?`)) return;
-    fetch('/no-parking/set-armed', { method: 'POST', body: JSON.stringify({ armed }) });
-    fetch('/intrusion/set-all-armed', { method: 'POST', body: JSON.stringify({ armed }) });
-  }
-
-  const modeLabels = { away: 'ไม่อยู่บ้าน (หลังบ้านเต็มระบบตลอด)', home: 'อยู่บ้าน (หลังบ้านเปิดเฉพาะดึก)', custom: 'กำหนดเอง (คุมทีละกล้อง)' };
-  function setMode(m) {
-    if (!confirm(`เปลี่ยนโหมดเป็น "${modeLabels[m]}"?`)) return;
-    fetch('/mode/set', { method: 'POST', body: JSON.stringify({ mode: m }) }).then(refreshMode);
-  }
-  function refreshMode() {
-    fetch('/mode/status', { cache: 'no-store' }).then((r) => r.json()).then((d) => {
-      document.querySelectorAll('.mode-btn').forEach((b) => b.classList.toggle('active', b.dataset.mode === d.mode));
-    });
-  }
-  refreshMode();
-
   let zonePoints = null;
   let draggingZoneIdx = null;
 
@@ -137,6 +122,11 @@
     return [Math.round(Math.min(...xs)), Math.round(Math.min(...ys)), Math.round(Math.max(...xs)), Math.round(Math.max(...ys))];
   }
   let togglingArmed = false;
+  function setArmedBtn(armed) {
+    armedBtn.classList.toggle('on', armed);
+    armedBtn.setAttribute('aria-checked', armed ? 'true' : 'false');
+    armedBtn.firstElementChild.textContent = armed ? 'ระบบหน้าบ้าน: เฝ้าอยู่' : 'ระบบหน้าบ้าน: ปิดอยู่';
+  }
 
   function imageDisplayRect() {
     const rect = video.getBoundingClientRect();
@@ -186,15 +176,16 @@
 
   function toggleArmed() {
     togglingArmed = true;
-    fetch('/no-parking/toggle-armed', { method: 'POST' }).then((r) => r.json()).then((d) => {
-      armedBtn.textContent = d.armed ? '🟢 ระบบเปิดอยู่ (กดเพื่อปิด)' : '🔴 ระบบปิดอยู่ (กดเพื่อเปิด)';
-      armedBtn.classList.toggle('btn-off', !d.armed);
+    act('/no-parking/toggle-armed', {}).then((d) => {
+      if (!d) return;
+      toast(d.armed ? 'เปิดระบบหน้าบ้านแล้ว' : 'ปิดระบบหน้าบ้านแล้ว', d.armed ? 'ok' : 'warn');
+      setArmedBtn(d.armed);
     }).finally(() => { togglingArmed = false; });
   }
 
   function testAlarm() {
     statusEl.textContent = 'กำลังเล่น...';
-    fetch('/no-parking/test-alarm', { method: 'POST' }).then((r) => r.json()).then(() => { statusEl.textContent = 'เล่นแล้ว'; });
+    act('/no-parking/test-alarm', {}, '🔊 กำลังเล่นเสียงทดสอบ').then(() => { statusEl.textContent = 'เล่นแล้ว'; });
   }
 
   function drawDetections(detections, zone) {
@@ -218,14 +209,20 @@
   }
 
   function applyState(d) {
-    document.getElementById('readyVal').textContent = d.ready ? '✅ พร้อม' : '⏳ กำลังโหลดโมเดล...';
+    document.getElementById('readyVal').textContent = d.ready ? 'พร้อม' : 'กำลังโหลด';
     document.getElementById('detCountVal').textContent = (d.detections || []).length;
     document.getElementById('alertCountVal').textContent = d.alertCount;
     bannerEl.classList.toggle('show', !!d.running);
+    const lastNp = (d.recentAlerts || [])[0];
+    const lastTxt = lastNp ? 'แจ้งเตือนล่าสุด ' + new Date(lastNp.ts).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : 'ยังไม่มีการแจ้งเตือน';
+    if (d.running) setStatusHero('alert', 'รถจอดขวางทางเข้า', 'กำลังเล่นเสียงเตือน · ' + lastTxt);
+    else if (d.videoOffline) setStatusHero('warn', 'กล้องหน้าบ้านขาดการเชื่อมต่อ', lastTxt);
+    else if (!d.ready) setStatusHero('warn', 'กำลังโหลดโมเดลตรวจจับรถ...', 'รอสักครู่');
+    else if (!d.armed) setStatusHero('off', 'ระบบหน้าบ้านปิดอยู่', lastTxt);
+    else setStatusHero('ok', 'ปลอดภัย · เฝ้าหน้าบ้านอยู่', lastTxt);
     offlineBadgeEl.classList.toggle('show', !!d.videoOffline);
     if (!togglingArmed) {
-      armedBtn.textContent = d.armed ? '🟢 ระบบเปิดอยู่ (กดเพื่อปิด)' : '🔴 ระบบปิดอยู่ (กดเพื่อเปิด)';
-      armedBtn.classList.toggle('btn-off', !d.armed);
+      setArmedBtn(d.armed);
     }
     if ((d.zonePoints || d.zone) && !zonePoints) {
       zonePoints = d.zonePoints || boundsToPoints(d.zone);
@@ -233,8 +230,8 @@
     }
     drawDetections(d.detections, d.zone);
     document.getElementById('logList').innerHTML = (d.recentAlerts || [])
-      .map((a) => `<div class="log-row"><span>${new Date(a.ts).toLocaleTimeString('th-TH')}</span><span>${a.source === 'manual' ? 'ทดสอบ' : 'กล้อง'}</span></div>`)
-      .join('') || '-';
+      .map((a) => `<div class="log-row"><span>${new Date(a.ts).toLocaleTimeString('th-TH')}</span><span>${a.source === 'manual' ? 'ทดสอบเสียง' : 'ตรวจพบรถจอด'}</span></div>`)
+      .join('') || '<div class="empty">ยังไม่มีการแจ้งเตือน</div>';
   }
 
   function connect() {
