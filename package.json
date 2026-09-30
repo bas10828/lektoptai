@@ -1,0 +1,9 @@
+{
+  "name": "vigi-control",
+  "private": true,
+  "description": "No npm dependencies; this file only exists so `npm test` works.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  }
+}
