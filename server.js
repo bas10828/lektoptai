@@ -1,5 +1,6 @@
 const http = require('http');
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const os = require('os');
 const cfg = require('./config');
@@ -12,34 +13,71 @@ const { getChannelNamesByIp } = require('./nvr-client');
 const auth = require('./auth');
 
 const publicDir = path.join(__dirname, 'public');
+// Where state + event logs live. Defaults to the app dir (bind-mounted in
+// Docker); tests point it at a temp dir so they never touch real state.
+const dataDir = process.env.VIGI_DATA_DIR || __dirname;
 
 // Survives a power loss / restart: each camera's last-known armed state
 // (relevant to "custom" mode — away/home re-derive their own armed state on
 // boot regardless, see mode.js) overrides config.js's cautious armedDefault.
-const armedStateStore = createArmedStateStore(__dirname);
+const armedStateStore = createArmedStateStore(dataDir);
 cfg.noParking.armedDefault = armedStateStore.getNoParking(cfg.noParking.armedDefault);
 for (const camCfg of cfg.intrusionCams) camCfg.armedDefault = armedStateStore.getIntrusion(camCfg.id, camCfg.armedDefault);
 
-const noParking = createNoParkingChannel(cfg.noParking, __dirname, armedStateStore);
-const camSettings = createCamSettingsStore(__dirname, cfg.intrusionCams);
-const intrusion = createIntrusionChannel(cfg.intrusionCams, __dirname, armedStateStore, camSettings);
-const mode = createModeController({ intrusion, noParking, camSettings, dataDir: __dirname });
+const noParking = createNoParkingChannel(cfg.noParking, dataDir, armedStateStore);
+const camSettings = createCamSettingsStore(dataDir, cfg.intrusionCams);
+const intrusion = createIntrusionChannel(cfg.intrusionCams, dataDir, armedStateStore, camSettings);
+const mode = createModeController({ intrusion, noParking, camSettings, dataDir });
+
+// Cache busting. The public domain sits behind Cloudflare, which cached
+// /shared.css for hours after a deploy (no Cache-Control from us). Now:
+// HTML is never cached and references shared assets as ?v=<content hash>;
+// a versioned URL is immutable (new content = new URL), an unversioned one
+// must revalidate.
+const SHARED_ASSETS = ['/shared.css', '/shared.js'];
+const versionCache = new Map(); // file -> { mtimeMs, v }
+function assetVersion(urlPath) {
+  const file = path.join(publicDir, urlPath);
+  try {
+    const { mtimeMs } = fs.statSync(file);
+    const hit = versionCache.get(file);
+    if (hit && hit.mtimeMs === mtimeMs) return hit.v;
+    const v = crypto.createHash('sha1').update(fs.readFileSync(file)).digest('hex').slice(0, 10);
+    versionCache.set(file, { mtimeMs, v });
+    return v;
+  } catch (e) {
+    return null;
+  }
+}
+function versionAssetRefs(html) {
+  let out = html;
+  for (const asset of SHARED_ASSETS) {
+    const v = assetVersion(asset);
+    if (v) out = out.split(`"${asset}"`).join(`"${asset}?v=${v}"`);
+  }
+  return out;
+}
 
 function serveStatic(dir, req, res) {
-  let filePath = req.url === '/' ? '/index.html' : req.url;
+  const [urlPath, query = ''] = req.url.split('?');
+  let filePath = urlPath === '/' ? '/index.html' : urlPath;
   filePath = path.join(dir, filePath);
   if (!filePath.startsWith(dir)) { res.writeHead(403); res.end('Forbidden'); return; }
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end('Not found'); return; }
     const ext = path.extname(filePath);
-    const type = ext === '.html' ? 'text/html'
+    const type = ext === '.html' ? 'text/html; charset=utf-8'
       : ext === '.js' ? 'application/javascript'
       : ext === '.css' ? 'text/css'
       : ext === '.json' ? 'application/manifest+json'
       : ext === '.png' ? 'image/png'
       : 'text/plain';
-    res.writeHead(200, { 'Content-Type': type });
-    res.end(data);
+    const versioned = /(^|&)v=/.test(query);
+    const cacheControl = ext === '.html' ? 'no-cache'
+      : versioned ? 'public, max-age=31536000, immutable'
+      : 'no-cache';
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': cacheControl });
+    res.end(ext === '.html' ? versionAssetRefs(data.toString('utf8')) : data);
   });
 }
 
@@ -87,7 +125,8 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  if (req.url === '/shared.css') return serveStatic(publicDir, req, res);
+  // Pre-auth: the login page needs its stylesheet (with or without ?v=).
+  if (req.url.split('?')[0] === '/shared.css') return serveStatic(publicDir, req, res);
 
   if (!auth.isValidSession(req)) {
     const wantsHtml = (req.headers.accept || '').includes('text/html');
